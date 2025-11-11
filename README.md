@@ -1,0 +1,2 @@
+# SentinalScan
+Automated Vulnerability Scanner 
