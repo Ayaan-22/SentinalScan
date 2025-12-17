@@ -59,9 +59,20 @@ pytest_cache/
 *.swp
 *.swo
 
-# macOS
+# MacOS
 .DS_Store
 
 # Windows
 Thumbs.db
 ehthumbs.db
+
+# Generated reports
+reports/
+
+# Frontend
+node_modules/
+frontend/node_modules/
+frontend/dist/
+
+# Logs
+*.log

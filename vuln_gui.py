@@ -16,7 +16,7 @@ import sys
 import os
 
 # Import the scanner modules
-from vuln_scanner import (
+from backend.vuln_scanner import (
     VulnerabilityScanner, ScanConfig, Vulnerability, 
     VulnType, SeverityLevel, VERSION, BANNER
 )

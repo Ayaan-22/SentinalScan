@@ -63,6 +63,10 @@ class VulnType(Enum):
     XXE = "XML External Entity"
     SSRF = "Server-Side Request Forgery"
     INFO_DISCLOSURE = "Information Disclosure"
+    SECURITY_HEADERS = "Missing Security Headers"
+    SENSITIVE_FILES = "Sensitive File Exposure"
+    COOKIE_SECURITY = "Insecure Cookie Settings"
+    CLICKJACKING = "Clickjacking"
 
 
 @dataclass
@@ -102,6 +106,7 @@ class ScanConfig:
     cookies: Optional[Dict[str, str]] = None
     headers: Optional[Dict[str, str]] = None
     verbose: bool = False
+    skip_auth_check: bool = False
 
 
 class ScannerLogger:
@@ -440,6 +445,10 @@ class VulnerabilityTester:
         VulnType.CSRF: SeverityLevel.MEDIUM,
         VulnType.OPEN_REDIRECT: SeverityLevel.MEDIUM,
         VulnType.INFO_DISCLOSURE: SeverityLevel.LOW,
+        VulnType.SECURITY_HEADERS: SeverityLevel.LOW,
+        VulnType.SENSITIVE_FILES: SeverityLevel.HIGH,
+        VulnType.COOKIE_SECURITY: SeverityLevel.LOW,
+        VulnType.CLICKJACKING: SeverityLevel.MEDIUM,
     }
     
     REMEDIATION = {
@@ -451,6 +460,10 @@ class VulnerabilityTester:
         VulnType.XXE: "Disable external entity processing, use secure XML parsers",
         VulnType.SSRF: "Validate URLs, use allowlists, disable unnecessary protocols",
         VulnType.INFO_DISCLOSURE: "Remove sensitive information from responses, proper error handling",
+        VulnType.SECURITY_HEADERS: "Configure security headers (HSTS, CSP, etc.)",
+        VulnType.SENSITIVE_FILES: "Remove sensitive files from public access, configure access controls",
+        VulnType.COOKIE_SECURITY: "Set Secure and HttpOnly flags on cookies",
+        VulnType.CLICKJACKING: "Implement X-Frame-Options or CSP frame-ancestors",
     }
     
     def __init__(self, session: requests.Session, config: ScanConfig, logger: ScannerLogger):
@@ -831,16 +844,168 @@ class VulnerabilityTester:
         
         return vulnerabilities
 
+    def test_security_headers(self, url: str, response: requests.Response) -> List[Vulnerability]:
+        """Test for missing or weak security headers"""
+        vulnerabilities = []
+        headers = response.headers
+        
+        # Check HSTS
+        if 'Strict-Transport-Security' not in headers and url.startswith("https://"):
+            score, level, icon, remediation = self._get_vulnerability_details(VulnType.SECURITY_HEADERS)
+            vulnerabilities.append(Vulnerability(
+                url=url,
+                vuln_type=VulnType.SECURITY_HEADERS.value,
+                description="Missing Strict-Transport-Security Header",
+                severity_score=score,
+                severity_level=level,
+                severity_icon=icon,
+                evidence="Header not found",
+                timestamp=time.time(),
+                remediation=remediation,
+                confidence="High"
+            ))
+            
+        # Check CSP
+        if 'Content-Security-Policy' not in headers:
+            score, level, icon, remediation = self._get_vulnerability_details(VulnType.SECURITY_HEADERS)
+            vulnerabilities.append(Vulnerability(
+                url=url,
+                vuln_type=VulnType.SECURITY_HEADERS.value,
+                description="Missing Content-Security-Policy Header",
+                severity_score=score,
+                severity_level=level,
+                severity_icon=icon,
+                evidence="Header not found",
+                timestamp=time.time(),
+                remediation=remediation,
+                confidence="High"
+            ))
+            
+        # Check X-Frame-Options (Clickjacking)
+        if 'X-Frame-Options' not in headers and 'Content-Security-Policy' not in headers: # CSP can handle this too
+            score, level, icon, remediation = self._get_vulnerability_details(VulnType.CLICKJACKING)
+            vulnerabilities.append(Vulnerability(
+                url=url,
+                vuln_type=VulnType.CLICKJACKING.value,
+                description="Missing Anti-Clickjacking Header",
+                severity_score=score,
+                severity_level=level,
+                severity_icon=icon,
+                evidence="X-Frame-Options and CSP frame-ancestors incorrect",
+                timestamp=time.time(),
+                remediation=remediation,
+                confidence="High"
+            ))
+            
+        # Check X-Content-Type-Options
+        if 'X-Content-Type-Options' not in headers:
+            score, level, icon, remediation = self._get_vulnerability_details(VulnType.SECURITY_HEADERS)
+            vulnerabilities.append(Vulnerability(
+                url=url,
+                vuln_type=VulnType.SECURITY_HEADERS.value,
+                description="Missing X-Content-Type-Options Header",
+                severity_score=score,
+                severity_level=level,
+                severity_icon=icon,
+                evidence="Header not found",
+                timestamp=time.time(),
+                remediation=remediation,
+                confidence="High"
+            ))
+
+        return vulnerabilities
+
+    def test_cookie_security(self, url: str, response: requests.Response) -> List[Vulnerability]:
+        """Test for insecure cookie attributes"""
+        vulnerabilities = []
+        
+        for cookie in response.cookies:
+            if not cookie.secure and url.startswith("https://"):
+                score, level, icon, remediation = self._get_vulnerability_details(VulnType.COOKIE_SECURITY)
+                vulnerabilities.append(Vulnerability(
+                    url=url,
+                    vuln_type=VulnType.COOKIE_SECURITY.value,
+                    description=f"Cookie '{cookie.name}' missing Secure flag",
+                    severity_score=score,
+                    severity_level=level,
+                    severity_icon=icon,
+                    evidence=f"Cookie: {cookie.name}",
+                    timestamp=time.time(),
+                    remediation=remediation,
+                    confidence="High"
+                ))
+            
+            if not cookie.has_nonstandard_attr('HttpOnly'):
+                score, level, icon, remediation = self._get_vulnerability_details(VulnType.COOKIE_SECURITY)
+                vulnerabilities.append(Vulnerability(
+                    url=url,
+                    vuln_type=VulnType.COOKIE_SECURITY.value,
+                    description=f"Cookie '{cookie.name}' missing HttpOnly flag",
+                    severity_score=score,
+                    severity_level=level,
+                    severity_icon=icon,
+                    evidence=f"Cookie: {cookie.name}",
+                    timestamp=time.time(),
+                    remediation=remediation,
+                    confidence="High"
+                ))
+                
+        return vulnerabilities
+
+    def test_sensitive_files(self, url: str) -> List[Vulnerability]:
+        """Test for exposed sensitive files"""
+        vulnerabilities = []
+        common_files = [
+            '.env',
+            '.git/config',
+            '.git/HEAD',
+            'backup.zip',
+            'backup.sql',
+            'wp-config.php.bak',
+            '.htaccess'
+        ]
+        
+        for file in common_files:
+            target_url = urljoin(url, file)
+            try:
+                self.rate_limiter.wait()
+                response = self.session.get(target_url, timeout=self.config.timeout, allow_redirects=False)
+                
+                if response.status_code == 200:
+                    # Verify it's not a custom 404 page by checking length/content
+                    # Ideally we compare with a known 404, but here we do simple checks
+                    if len(response.text) < 5000 and "html" not in response.headers.get('Content-Type', '').lower():
+                         score, level, icon, remediation = self._get_vulnerability_details(VulnType.SENSITIVE_FILES)
+                         vulnerabilities.append(Vulnerability(
+                            url=target_url,
+                            vuln_type=VulnType.SENSITIVE_FILES.value,
+                            description=f"Exposed sensitive file: {file}",
+                            severity_score=score,
+                            severity_level=level,
+                            severity_icon=icon,
+                            evidence=f"Ref: {target_url} - Status: 200",
+                            timestamp=time.time(),
+                            remediation=remediation,
+                            confidence="Medium"
+                        ))
+            except Exception:
+                pass
+                
+        return vulnerabilities
+
 
 class VulnerabilityScanner:
     """Main vulnerability scanner orchestrator"""
     
-    def __init__(self, config: ScanConfig):
+    def __init__(self, config: ScanConfig, logger: Optional[ScannerLogger] = None):
         self.config = config
-        self.logger = ScannerLogger(
-            verbose=config.verbose,
-            log_file=f"scan_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
-        )
+        if logger:
+            self.logger = logger
+        else:
+            self.logger = ScannerLogger(
+                verbose=config.verbose,
+                log_file=f"scan_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+            )
         self.vulnerabilities: List[Vulnerability] = []
         self.start_time: Optional[float] = None
         self.crawler: Optional[WebCrawler] = None
@@ -849,6 +1014,10 @@ class VulnerabilityScanner:
     
     def _verify_authorization(self) -> None:
         """Verify user has authorization to scan"""
+        if self.config.skip_auth_check:
+            self.logger.info("Skipping manual authorization check (API mode)")
+            return
+            
         print(BANNER)
         print(f"Target: {self.config.target_url}\n")
         print("⚠️  CRITICAL WARNING:")
@@ -951,6 +1120,16 @@ class VulnerabilityScanner:
                     self.vulnerabilities.extend(info_disclosures)
                 except Exception:
                     pass
+
+                # Test Security Headers
+                self.vulnerabilities.extend(self.tester.test_security_headers(page, response))
+                
+                # Test Cookie Security
+                self.vulnerabilities.extend(self.tester.test_cookie_security(page, response))
+
+                # Test Sensitive Files (Only on base URL or directory roots to save time/requests)
+                if page.count('/') <= 3: # Approximation for root/near-root pages
+                     self.vulnerabilities.extend(self.tester.test_sensitive_files(page))
                 
                 # Test forms
                 forms = self.tester.extract_forms(page)
