@@ -1,186 +1,248 @@
 import React, { useState } from "react";
-import { Play, Square, Settings } from "lucide-react";
+import { Play, Square, Settings, ChevronDown, ChevronUp } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
-const ScanForm = ({ onStart, onStop, isScanning }) => {
-  const [url, setUrl] = useState("");
-  const [options, setOptions] = useState({
-    max_pages: 50,
-    workers: 5,
-    timeout: 15,
-    verify_ssl: true,
-    obey_robots: true,
-    auth_token: "",
-    cookies_str: "",
-    headers_str: "",
-    exclude_paths_str: "",
-  });
+function ScanForm({ onStart, onStop, isScanning }) {
+  const [url, setUrl] = useState("https://www.example.com");
+  const [method, setMethod] = useState("GET");
+  const [verifySsl, setVerifySsl] = useState(true);
+  const [obeyRobots, setObeyRobots] = useState(true);
+  const [maxPages, setMaxPages] = useState(50);
+  const [workers, setWorkers] = useState(5);
+  const [timeout, setTimeout] = useState(15);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
+  // Auth / Advanced
+  const [authToken, setAuthToken] = useState("");
+  const [cookies, setCookies] = useState("");
+  const [customHeaders, setCustomHeaders] = useState("");
+  const [excludePaths, setExcludePaths] = useState("");
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (url) onStart(url, options);
+    if (isScanning) {
+      onStop();
+    } else {
+      const options = {
+        scan_method: method,
+        max_pages: parseInt(maxPages) || 50,
+        threads: parseInt(workers) || 5,
+        timeout: parseInt(timeout) || 10,
+        verify_ssl: verifySsl,
+        obey_robots: obeyRobots,
+        auth_token: authToken,
+        cookies: parseCookies(cookies),
+        custom_headers: parseHeaders(customHeaders),
+        exclude_paths: excludePaths
+          ? excludePaths.split(",").map((p) => p.trim())
+          : [],
+      };
+      onStart(url, options);
+    }
+  };
+
+  const parseCookies = (str) => {
+    if (!str) return null;
+    const result = {};
+    str.split(";").forEach((part) => {
+      const [k, v] = part.split("=");
+      if (k && v) result[k.trim()] = v.trim();
+    });
+    return result;
+  };
+
+  const parseHeaders = (str) => {
+    if (!str) return null;
+    const result = {};
+    str.split(";").forEach((part) => {
+      const [k, v] = part.split(":");
+      if (k && v) result[k.trim()] = v.trim();
+    });
+    return result;
   };
 
   return (
-    <div className="glass-card p-6 mb-6">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-bold flex items-center gap-2 text-cyan-400">
-          <Settings className="w-5 h-5" />
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="glass-card p-6 md:p-8"
+    >
+      <div className="flex items-center justify-between mb-8">
+        <h2 className="text-xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent flex items-center gap-2">
+          <Settings className="w-5 h-5 text-cyan-500" />
           Scan Configuration
         </h2>
-        <div className="text-xs text-slate-400">v2.0.0</div>
+        <span className="text-xs font-mono text-slate-500 border border-slate-800 px-2 py-1 rounded">
+          v2.1.0
+        </span>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="flex gap-4">
-          <div className="flex-1">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div>
+          <label className="text-xs text-slate-400 ml-1 mb-2 block uppercase tracking-wider font-semibold">
+            Target URL
+          </label>
+          <div className="flex gap-4">
+            <select
+              className="glass-input w-24 font-mono text-sm bg-slate-900"
+              value={method}
+              onChange={(e) => setMethod(e.target.value)}
+            >
+              <option value="GET">GET</option>
+              <option value="POST">POST</option>
+            </select>
             <input
-              type="url"
+              type="text"
               placeholder="https://example.com"
-              className="glass-input w-full"
+              className="glass-input flex-1 font-mono text-sm"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              disabled={isScanning}
               required
             />
           </div>
-
-          <button
-            type="button"
-            className={`glass-btn flex items-center gap-2 ${
-              isScanning ? "opacity-50 cursor-not-allowed" : ""
-            }`}
-            onClick={handleSubmit}
-            disabled={isScanning}
-          >
-            <Play className="w-4 h-4" /> Start Scan
-          </button>
-
-          {isScanning && (
-            <button
-              type="button"
-              className="glass-btn bg-red-500/10 text-red-400 border-red-500/30 hover:bg-red-500/20"
-              onClick={onStop}
-            >
-              <Square className="w-4 h-4 fill-current" /> Stop
-            </button>
-          )}
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          <label className="flex items-center gap-2 text-sm text-slate-400">
+          {/* Toggles */}
+          <label className="flex items-center gap-3 p-3 rounded-xl border border-slate-800 bg-slate-900/30 cursor-pointer hover:border-slate-700 transition-colors">
             <input
               type="checkbox"
-              checked={options.verify_ssl}
-              onChange={(e) =>
-                setOptions({ ...options, verify_ssl: e.target.checked })
-              }
-              className="rounded bg-slate-800 border-slate-600 text-cyan-500 focus:ring-cyan-500/50"
+              checked={verifySsl}
+              onChange={(e) => setVerifySsl(e.target.checked)}
+              className="accent-cyan-500 w-4 h-4"
             />
-            Verify SSL
+            <span className="text-sm font-medium text-slate-300">
+              Verify SSL
+            </span>
           </label>
 
-          <label className="flex items-center gap-2 text-sm text-slate-400">
+          <label className="flex items-center gap-3 p-3 rounded-xl border border-slate-800 bg-slate-900/30 cursor-pointer hover:border-slate-700 transition-colors">
             <input
               type="checkbox"
-              checked={options.obey_robots}
-              onChange={(e) =>
-                setOptions({ ...options, obey_robots: e.target.checked })
-              }
-              className="rounded bg-slate-800 border-slate-600 text-cyan-500 focus:ring-cyan-500/50"
+              checked={obeyRobots}
+              onChange={(e) => setObeyRobots(e.target.checked)}
+              className="accent-cyan-500 w-4 h-4"
             />
-            Obey robots.txt
+            <span className="text-sm font-medium text-slate-300">
+              Obey Robots
+            </span>
           </label>
         </div>
 
         <div className="grid grid-cols-3 gap-4">
-          <div className="space-y-1">
-            <label className="text-xs text-slate-400">Max Pages</label>
+          <div>
+            <label className="text-xs text-slate-400 ml-1 mb-2 block">
+              Max Pages
+            </label>
             <input
               type="number"
-              value={options.max_pages}
-              onChange={(e) =>
-                setOptions({ ...options, max_pages: parseInt(e.target.value) })
-              }
-              className="glass-input w-full"
-              min="1"
-              max="1000"
+              value={maxPages}
+              onChange={(e) => setMaxPages(e.target.value)}
+              className="glass-input w-full text-center font-mono"
             />
           </div>
-          <div className="space-y-1">
-            <label className="text-xs text-slate-400">Workers</label>
+          <div>
+            <label className="text-xs text-slate-400 ml-1 mb-2 block">
+              Workers
+            </label>
             <input
               type="number"
-              value={options.workers}
-              onChange={(e) =>
-                setOptions({ ...options, workers: parseInt(e.target.value) })
-              }
-              className="glass-input w-full"
-              min="1"
-              max="20"
+              value={workers}
+              onChange={(e) => setWorkers(e.target.value)}
+              className="glass-input w-full text-center font-mono"
             />
           </div>
-          <div className="space-y-1">
-            <label className="text-xs text-slate-400">Timeout (s)</label>
+          <div>
+            <label className="text-xs text-slate-400 ml-1 mb-2 block">
+              Timeout (s)
+            </label>
             <input
               type="number"
-              value={options.timeout}
-              onChange={(e) =>
-                setOptions({ ...options, timeout: parseInt(e.target.value) })
-              }
-              className="glass-input w-full"
-              min="1"
-              max="60"
+              value={timeout}
+              onChange={(e) => setTimeout(e.target.value)}
+              className="glass-input w-full text-center font-mono"
             />
           </div>
         </div>
 
-        <div className="space-y-3 pt-2 border-t border-slate-700/50">
-          <h3 className="text-sm font-medium text-slate-300">
-            Advanced Authentication
-          </h3>
-
-          <input
-            type="text"
-            placeholder="Bearer Token (optional)"
-            className="glass-input w-full text-sm"
-            value={options.auth_token}
-            onChange={(e) =>
-              setOptions({ ...options, auth_token: e.target.value })
-            }
-          />
-
-          <input
-            type="text"
-            placeholder="Cookies (name=val; name2=val2)"
-            className="glass-input w-full text-sm"
-            value={options.cookies_str}
-            onChange={(e) =>
-              setOptions({ ...options, cookies_str: e.target.value })
-            }
-          />
-
-          <input
-            type="text"
-            placeholder="Custom Headers (Header:Value; Header2:Value)"
-            className="glass-input w-full text-sm"
-            value={options.headers_str}
-            onChange={(e) =>
-              setOptions({ ...options, headers_str: e.target.value })
-            }
-          />
-          <input
-            type="text"
-            placeholder="Exclude Paths (/admin, /logout)"
-            className="glass-input w-full text-sm"
-            value={options.exclude_paths_str}
-            onChange={(e) =>
-              setOptions({ ...options, exclude_paths_str: e.target.value })
-            }
-          />
+        <div>
+          <button
+            type="button"
+            onClick={() => setShowAdvanced(!showAdvanced)}
+            className="text-xs flex items-center gap-1 text-slate-500 hover:text-cyan-400 transition-colors uppercase tracking-wider font-semibold mx-auto"
+          >
+            {showAdvanced ? "Hide Advanced Options" : "Show Advanced Options"}
+            {showAdvanced ? (
+              <ChevronUp className="w-3 h-3" />
+            ) : (
+              <ChevronDown className="w-3 h-3" />
+            )}
+          </button>
         </div>
+
+        <AnimatePresence>
+          {showAdvanced && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="space-y-4 overflow-hidden"
+            >
+              <input
+                type="text"
+                placeholder="Bearer Token (optional)"
+                className="glass-input w-full text-sm"
+                value={authToken}
+                onChange={(e) => setAuthToken(e.target.value)}
+              />
+              <input
+                type="text"
+                placeholder="Cookies (name=val; name2=val2)"
+                className="glass-input w-full text-sm"
+                value={cookies}
+                onChange={(e) => setCookies(e.target.value)}
+              />
+              <input
+                type="text"
+                placeholder="Custom Headers (Header:Value; Header2:Value)"
+                className="glass-input w-full text-sm"
+                value={customHeaders}
+                onChange={(e) => setCustomHeaders(e.target.value)}
+              />
+              <input
+                type="text"
+                placeholder="Exclude Paths (/admin, /logout)"
+                className="glass-input w-full text-sm"
+                value={excludePaths}
+                onChange={(e) => setExcludePaths(e.target.value)}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <button
+          type="submit"
+          className={`w-full relative group overflow-hidden rounded-xl p-4 font-bold tracking-widest uppercase transition-all duration-300 ${
+            isScanning
+              ? "bg-red-500/10 text-red-500 border border-red-500/50 hover:bg-red-500/20"
+              : "bg-cyan-500 text-slate-950 hover:bg-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.4)]"
+          }`}
+        >
+          <div className="relative z-10 flex items-center justify-center gap-3">
+            {isScanning ? (
+              <Square className="w-5 h-5 fill-current" />
+            ) : (
+              <Play className="w-5 h-5 fill-current" />
+            )}
+            {isScanning ? "Stop System" : "Initialize Scan"}
+          </div>
+          {!isScanning && (
+            <div className="absolute top-0 -left-[100%] w-full h-full bg-gradient-to-r from-transparent via-white/30 to-transparent skew-x-12 group-hover:animate-shine" />
+          )}
+        </button>
       </form>
-    </div>
+    </motion.div>
   );
-};
+}
 
 export default ScanForm;

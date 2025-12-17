@@ -1,24 +1,28 @@
 # 🛡️ SentinalScan - Advanced Web Vulnerability Scanner
 
 > **Professional-Grade Automated Security Assessment Tool**  
-> _Built with Python, FastAPI, and React_
+> _Built with Python, FastAPI, and React (Cyber Aesthetic)_
 
-![Version](https://img.shields.io/badge/version-2.0.0-blue)
+![Version](https://img.shields.io/badge/version-2.1.0-blue)
 ![Python](https://img.shields.io/badge/python-3.9%2B-blue)
-![React](https://img.shields.io/badge/react-18-cyan)
+![React](https://img.shields.io/badge/react-19-cyan)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.100%2B-teal)
 
 ## 🚀 Overview
 
 **SentinalScan** is a powerful, production-ready web vulnerability scanner designed for security professionals and developers. It automates the detection of common web vulnerabilities, providing real-time feedback and detailed reports.
 
-The project features a modern **React-based Web Interface** with glassmorphism aesthetics, a robust **FastAPI Backend**, and a legacy CLI/GUI for quick scans.
+The project features a **Premium Cyber/Glassmorphism Interface** built with React & Tailwind CSS. It provides a hacker-style dashboard with real-time logs, animated stats, and deep insight into security posture.
 
 ## ✨ Key Features
 
+- **🎨 Premium Cyber UI**: Dark-mode "Glassmorphism" aesthetic with neon accents, smooth animations, and responsive layout.
 - **🔍 Comprehensive Crawling**: Intelligent multi-threaded crawler with scope control and `robots.txt` compliance.
-- **⚡ Real-Time Scanning**: View logs and findings instantly via WebSockets.
-- **🖥️ Modern Dashboard**: Beautiful, dark-mode web interface for managing scans and visualizing data.
+- **⚡ Real-Time Scanning**: View live execution logs and findings via WebSocket streams.
+- **🖥️ Interactive Dashboard**:
+  - Live "Hacker Terminal" logs.
+  - Animated statistics cards.
+  - Severity-coded finding badges (Critical/High/Medium/Low).
 - **📊 Multiple Report Formats**: Export findings to **HTML**, **JSON**, and **Text**.
 
 ### Vulnerability Checks
@@ -47,6 +51,8 @@ SentinalScan/
 │   └── vuln_scanner.py    # Core Scanning Logic & Engine
 ├── frontend/              # React Frontend
 │   ├── src/               # Application Source
+│   │   ├── components/    # Reusable UI Components (Glassmorphism)
+│   │   └── App.jsx        # Main Dashboard Layout
 │   └── public/            # Static Assets
 ├── reports/               # Generated Scan Reports
 └── vuln_gui.py            # Legacy Tkinter Interface
@@ -106,7 +112,7 @@ npm install
     _Client runs at http://localhost:5173_
 
 3.  Open **http://localhost:5173** in your browser.
-4.  Enter a Target URL and click **Start Scan**.
+4.  Enter a Target URL and click **Initialize Scan**.
 
 ### Option B: Command Line Interface (CLI)
 
@@ -132,12 +138,13 @@ python vuln_gui.py
 
 ## ⚙️ Configuration
 
-You can customize scans via the UI or CLI arguments:
+You can customize scans via the UI (Advanced Settings accordion) or CLI arguments:
 
 - **Max Pages**: Limit the crawl depth and breadth.
 - **Concurrency**: Number of worker threads.
 - **Delays**: Throttling requests to avoid WAF blocking.
 - **Auth**: Bearer tokens and custom cookies support.
+- **Exclusions**: Skip specific paths like `/logout` or `/admin`.
 
 ---
 
