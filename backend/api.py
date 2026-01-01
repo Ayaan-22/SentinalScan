@@ -13,7 +13,16 @@ import time
 
 from vuln_scanner import VulnerabilityScanner, ScanConfig, ScannerLogger
 
-app = FastAPI(title="SentinalScan API")
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global loop
+    loop = asyncio.get_running_loop()
+    yield
+    # Cleanup if needed
+
+app = FastAPI(title="SentinalScan API", lifespan=lifespan)
 
 # CORS
 app.add_middleware(
@@ -139,10 +148,7 @@ def run_scan_thread(config_data: ScanRequest):
         state.is_scanning = False
         state.thread = None
 
-@app.on_event("startup")
-async def startup_event():
-    global loop
-    loop = asyncio.get_running_loop()
+
 
 @app.post("/scan/start")
 async def start_scan(request: ScanRequest):

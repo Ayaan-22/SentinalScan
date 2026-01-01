@@ -1114,6 +1114,8 @@ class VulnerabilityScanner:
                     self.vulnerabilities.append(path_traversal)
                 
                 # Get page content for info disclosure check
+                # Get page content for info disclosure check
+                response = None
                 try:
                     response = session.get(page, timeout=self.config.timeout)
                     info_disclosures = self.tester.test_info_disclosure(page, response.text)
@@ -1121,11 +1123,12 @@ class VulnerabilityScanner:
                 except Exception:
                     pass
 
-                # Test Security Headers
-                self.vulnerabilities.extend(self.tester.test_security_headers(page, response))
-                
-                # Test Cookie Security
-                self.vulnerabilities.extend(self.tester.test_cookie_security(page, response))
+                if response:
+                    # Test Security Headers
+                    self.vulnerabilities.extend(self.tester.test_security_headers(page, response))
+                    
+                    # Test Cookie Security
+                    self.vulnerabilities.extend(self.tester.test_cookie_security(page, response))
 
                 # Test Sensitive Files (Only on base URL or directory roots to save time/requests)
                 if page.count('/') <= 3: # Approximation for root/near-root pages
