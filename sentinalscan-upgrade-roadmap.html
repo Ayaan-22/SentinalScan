@@ -1,0 +1,2674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SentinalScan — Complete Upgrade Roadmap</title>
+<style>
+:root {
+  --bg: #f8f9fb;
+  --surface: #ffffff;
+  --surface2: #f1f3f7;
+  --border: #e2e6ed;
+  --border2: #d0d5de;
+  --text: #0f1117;
+  --text2: #4a5568;
+  --text3: #718096;
+  --mono: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+  --sans: -apple-system, 'Inter', 'Segoe UI', system-ui, sans-serif;
+  --red50: #fff5f5; --red600: #c53030; --red800: #822727;
+  --amber50: #fffbeb; --amber600: #b7791f; --amber800: #744210;
+  --green50: #f0fff4; --green600: #276749; --green800: #1c4532;
+  --blue50: #ebf8ff; --blue600: #2b6cb0; --blue800: #1a365d;
+  --purple50: #faf5ff; --purple600: #6b46c1; --purple800: #44337a;
+  --teal50: #e6fffa; --teal600: #2c7a7b; --teal800: #1d4044;
+  --coral50: #fff5f0; --coral600: #c05621; --coral800: #7b341e;
+  --gray50: #f7fafc; --gray600: #718096; --gray800: #2d3748;
+  --radius: 8px; --radius-lg: 12px;
+  --status-done-bg: #f0fff4;
+  --status-done-border: #c6f6d5;
+  --status-done-text: #22543d;
+  --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.05);
+  --shadow-md: 0 4px 12px rgba(0,0,0,.1), 0 2px 4px rgba(0,0,0,.06);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  font-size: 15px;
+}
+
+/* ── LAYOUT ── */
+.page-wrap { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem 5rem; }
+
+/* ── COVER ── */
+.cover {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 2.5rem 3rem;
+  margin-bottom: 2.5rem;
+  box-shadow: var(--shadow-md);
+  position: relative;
+  overflow: hidden;
+}
+.cover::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #E24B4A 0%, #EF9F27 33%, #1D9E75 66%, #7F77DD 100%);
+}
+.cover-eyebrow {
+  font-size: 11px; font-weight: 600; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--text3);
+  margin-bottom: .5rem;
+}
+.cover h1 {
+  font-size: 2rem; font-weight: 700; color: var(--text);
+  line-height: 1.2; margin-bottom: 1rem;
+}
+.cover h1 span { color: #2b6cb0; }
+.cover-meta {
+  display: flex; flex-wrap: wrap; gap: 1.5rem;
+  font-size: 13px; color: var(--text2);
+  margin-top: 1.5rem; padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+.cover-meta-item { display: flex; gap: .4rem; align-items: center; }
+.cover-meta-item strong { color: var(--text); }
+.pill {
+  display: inline-block; font-size: 11px; font-weight: 600;
+  padding: 2px 8px; border-radius: 20px; vertical-align: middle;
+}
+
+/* ── SECTION HEADERS ── */
+.section-header {
+  display: flex; align-items: center; gap: .75rem;
+  margin: 2.5rem 0 1.25rem;
+}
+.section-header h2 {
+  font-size: 1.25rem; font-weight: 600; color: var(--text);
+}
+.section-icon {
+  width: 32px; height: 32px; border-radius: var(--radius);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; flex-shrink: 0;
+}
+
+/* ── PHASE CARDS ── */
+.phase-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  margin-bottom: 1.5rem;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.phase-header {
+  padding: 1.25rem 1.5rem;
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--border);
+}
+.phase-label { display: flex; align-items: center; gap: .75rem; }
+.phase-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+.phase-title { font-size: 1.05rem; font-weight: 600; }
+.phase-subtitle { font-size: 13px; color: var(--text2); margin-top: 3px; max-width: 520px; }
+.phase-stats { display: flex; gap: 1rem; flex-shrink: 0; }
+.stat-box {
+  text-align: center; padding: .5rem .75rem;
+  background: var(--surface2); border-radius: var(--radius);
+  min-width: 64px;
+}
+.stat-num { font-size: 1.1rem; font-weight: 700; color: var(--text); }
+.stat-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: .05em; }
+
+/* ── TASK ITEMS ── */
+.tasks-list { padding: .5rem 0; }
+.task-item { border-bottom: 1px solid var(--border); }
+.task-item:last-child { border-bottom: none; }
+.task-summary {
+  display: flex; align-items: flex-start; gap: 1rem;
+  padding: .9rem 1.5rem; cursor: pointer;
+  user-select: none;
+}
+.task-summary:hover { background: var(--surface2); }
+.task-num {
+  width: 22px; height: 22px; border-radius: 50%;
+  font-size: 11px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; margin-top: 1px;
+}
+.task-info { flex: 1; min-width: 0; }
+.task-name { font-size: 14px; font-weight: 600; }
+.task-desc { font-size: 12px; color: var(--text3); margin-top: 2px; }
+.task-badges { display: flex; gap: .4rem; flex-wrap: wrap; margin-top: .4rem; }
+.badge {
+  font-size: 10px; font-weight: 600; padding: 2px 6px;
+  border-radius: 4px; border: 1px solid;
+}
+.task-right { display: flex; align-items: center; gap: .5rem; flex-shrink: 0; }
+.effort-chip {
+  font-size: 11px; font-weight: 600; padding: 3px 8px;
+  border-radius: 20px;
+}
+.prio-chip {
+  font-size: 10px; font-weight: 700; padding: 2px 7px;
+  border-radius: 4px; text-transform: uppercase; letter-spacing: .04em;
+}
+.chevron {
+  width: 16px; height: 16px; color: var(--text3);
+  transition: transform .2s;
+  flex-shrink: 0;
+}
+.task-item.done {
+  background: var(--status-done-bg);
+  border-color: var(--status-done-border);
+}
+.task-item.done .task-num {
+  background: var(--green600) !important;
+  color: white !important;
+}
+.task-item.done .task-name {
+  color: var(--status-done-text);
+}
+.task-item.done .task-desc {
+  color: #4a5568;
+}
+
+/* ── TASK DETAIL ── */
+.task-detail {
+  display: none;
+  padding: 0 1.5rem 1.25rem 3.85rem;
+  border-top: 1px solid var(--border);
+  background: var(--surface2);
+}
+.task-detail.open { display: block; }
+.detail-section { margin-top: 1rem; }
+.detail-label {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .08em; color: var(--text3); margin-bottom: .4rem;
+}
+.detail-text { font-size: 13px; color: var(--text2); line-height: 1.65; }
+.code-block {
+  background: #1a1d23; color: #abb2bf;
+  border-radius: var(--radius); padding: 1rem 1.25rem;
+  font-family: var(--mono); font-size: 12px; line-height: 1.7;
+  overflow-x: auto; white-space: pre;
+  margin-top: .4rem;
+}
+.code-block .cm { color: #5c6370; }
+.code-block .ck { color: #c678dd; }
+.code-block .cs { color: #98c379; }
+.code-block .cn { color: #61afef; }
+.code-block .cv { color: #e5c07b; }
+.tag-row { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .4rem; }
+.tag { font-size: 11px; padding: 2px 7px; border-radius: 4px;
+  background: var(--surface); border: 1px solid var(--border);
+  color: var(--text2); }
+
+/* ── ARCHITECTURE ── */
+.arch-diagram {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  margin-bottom: 1.5rem;
+}
+.arch-layer { margin-bottom: 1.5rem; }
+.arch-layer:last-child { margin-bottom: 0; }
+.arch-layer-label {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .1em; color: var(--text3); margin-bottom: .6rem;
+  padding-left: .25rem; border-left: 3px solid var(--border2);
+  padding-left: .5rem;
+}
+.arch-nodes { display: flex; flex-wrap: wrap; gap: .6rem; }
+.arch-node {
+  padding: .55rem 1rem; border-radius: var(--radius);
+  font-size: 12px; font-weight: 600;
+  border: 1px solid; display: flex; align-items: center; gap: .4rem;
+}
+.arch-arrow {
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; color: var(--text3); margin: .3rem 0;
+}
+.arch-divider {
+  height: 1px; background: var(--border); margin: 1rem 0;
+  position: relative;
+}
+
+/* ── TECH STACK ── */
+.stack-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: .75rem;
+  margin-bottom: 1.5rem;
+}
+.stack-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); overflow: hidden;
+}
+.stack-card-header {
+  padding: .6rem .9rem; background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--text3);
+}
+.stack-row { padding: .7rem .9rem; border-bottom: 1px solid var(--border); }
+.stack-row:last-child { border-bottom: none; }
+.stack-change { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; margin-bottom: .35rem; }
+.from-chip, .to-chip {
+  font-family: var(--mono); font-size: 11px; padding: 2px 7px;
+  border-radius: 4px; font-weight: 600;
+}
+.from-chip { background: #fff5f5; color: #c53030; border: 1px solid #fed7d7; }
+.to-chip { background: #f0fff4; color: #276749; border: 1px solid #c6f6d5; }
+.keep-chip { background: #ebf8ff; color: #2b6cb0; border: 1px solid #bee3f8;
+  font-family: var(--mono); font-size: 11px; padding: 2px 7px; border-radius: 4px; font-weight: 600; }
+.arrow-sep { font-size: 12px; color: var(--text3); }
+.stack-reason { font-size: 12px; color: var(--text2); line-height: 1.55; }
+
+/* ── SECURITY TABLE ── */
+.vuln-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 1.5rem; }
+.vuln-table th {
+  text-align: left; padding: .6rem .8rem;
+  background: var(--surface2); border: 1px solid var(--border);
+  font-weight: 600; font-size: 11px; text-transform: uppercase;
+  letter-spacing: .05em; color: var(--text3);
+}
+.vuln-table td { padding: .7rem .8rem; border: 1px solid var(--border); vertical-align: top; }
+.vuln-table tr:hover td { background: var(--surface2); }
+
+/* ── PERF TABLE ── */
+.perf-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 1.5rem; }
+.perf-table th {
+  text-align: left; padding: .55rem .75rem;
+  background: var(--surface2); border: 1px solid var(--border);
+  font-weight: 600; font-size: 11px; text-transform: uppercase;
+  letter-spacing: .05em; color: var(--text3);
+}
+.perf-table td { padding: .65rem .75rem; border: 1px solid var(--border); font-family: var(--mono); font-size: 12px; }
+.perf-table tr:hover td { background: var(--surface2); }
+
+/* ── CALLOUT BOXES ── */
+.callout {
+  border-radius: var(--radius); padding: 1rem 1.25rem;
+  margin-bottom: 1rem; border-left: 4px solid;
+  font-size: 13px; line-height: 1.65;
+}
+.callout-title { font-weight: 700; margin-bottom: .35rem; font-size: 13px; }
+.callout.danger { background: var(--red50); border-color: #fc8181; color: var(--red800); }
+.callout.warn { background: var(--amber50); border-color: #f6ad55; color: var(--amber800); }
+.callout.info { background: var(--blue50); border-color: #63b3ed; color: var(--blue800); }
+.callout.success { background: var(--green50); border-color: #68d391; color: var(--green800); }
+.callout.purple { background: var(--purple50); border-color: #9f7aea; color: var(--purple800); }
+
+/* ── TIMELINE ── */
+.timeline { position: relative; padding-left: 2rem; margin-bottom: 1.5rem; }
+.timeline::before {
+  content: ''; position: absolute; left: .35rem; top: 0; bottom: 0;
+  width: 2px; background: var(--border2);
+}
+.timeline-item { position: relative; margin-bottom: 1.5rem; }
+.timeline-dot {
+  position: absolute; left: -1.85rem; top: .2rem;
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid var(--surface); box-shadow: 0 0 0 2px var(--border2);
+}
+.timeline-head { font-weight: 600; font-size: 14px; margin-bottom: .3rem; }
+.timeline-body { font-size: 13px; color: var(--text2); line-height: 1.65; }
+
+/* ── GANTT ── */
+.gantt-wrap { overflow-x: auto; margin-bottom: 1.5rem; }
+.gantt-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.gantt-table th {
+  padding: .5rem .75rem; background: var(--surface2);
+  border: 1px solid var(--border); text-align: left;
+  font-weight: 600; text-transform: uppercase; font-size: 10px;
+  letter-spacing: .06em; color: var(--text3);
+}
+.gantt-table td { padding: .55rem .75rem; border: 1px solid var(--border); vertical-align: middle; }
+.gantt-bar-bg { background: var(--surface2); border-radius: 3px; height: 12px; position: relative; }
+.gantt-bar { height: 12px; border-radius: 3px; position: absolute; opacity: .75; }
+
+/* ── STARTUP PATHS ── */
+.path-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+.path-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 1.25rem;
+}
+.path-card-head { display: flex; align-items: center; gap: .6rem; margin-bottom: .75rem; }
+.path-letter {
+  width: 30px; height: 30px; border-radius: var(--radius);
+  font-size: 13px; font-weight: 700; display: flex;
+  align-items: center; justify-content: center;
+}
+.path-title { font-size: 14px; font-weight: 600; }
+.path-body { font-size: 13px; color: var(--text2); line-height: 1.65; }
+.path-hook {
+  margin-top: .6rem; font-size: 12px; font-weight: 600;
+  padding: .4rem .7rem; border-radius: var(--radius);
+  display: inline-block;
+}
+
+/* ── TOC ── */
+.toc {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 1.25rem 1.5rem;
+  margin-bottom: 2rem;
+}
+.toc h3 { font-size: 13px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: .06em; margin-bottom: .75rem; }
+.toc-list { list-style: none; display: flex; flex-wrap: wrap; gap: .4rem; }
+.toc-list li a {
+  font-size: 12px; color: var(--blue600);
+  text-decoration: none; padding: 3px 8px;
+  background: var(--blue50); border-radius: 4px;
+  border: 1px solid #bee3f8;
+}
+.toc-list li a:hover { background: #bee3f8; }
+
+/* ── PRINT ── */
+@media print {
+  body { background: white; font-size: 12px; }
+  .page-wrap { max-width: 100%; padding: 1rem; }
+  .task-detail { display: block !important; }
+  .no-print { display: none; }
+  .phase-card { break-inside: avoid; }
+  .task-item { break-inside: avoid; }
+}
+
+/* ── UTILITY ── */
+.mt-1 { margin-top: .5rem; }
+.mt-2 { margin-top: 1rem; }
+.flex-gap { display: flex; flex-wrap: wrap; gap: .5rem; }
+.text-muted { color: var(--text2); font-size: 13px; }
+.divider { height: 1px; background: var(--border); margin: 1.5rem 0; }
+hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+</style>
+</head>
+<body>
+<div class="page-wrap">
+
+<!-- ═══════════════════════════════════ COVER ═══════════════════════════════════ -->
+<div class="cover">
+  <div class="cover-eyebrow">Architecture &amp; Engineering Upgrade Roadmap</div>
+  <h1>SentinalScan<br><span>Complete Upgrade Roadmap</span></h1>
+  <p class="text-muted">A four-phase, production-grade upgrade plan covering security hardening, async performance, AI integration, multi-user SaaS architecture, and Kubernetes deployment — with full implementation code for every task.</p>
+  <div class="cover-meta">
+    <div class="cover-meta-item"><strong>Total phases:</strong> 4</div>
+    <div class="cover-meta-item"><strong>Total tasks:</strong> 32</div>
+    <div class="cover-meta-item"><strong>Estimated effort:</strong> ~300 hrs</div>
+    <div class="cover-meta-item"><strong>Timeline:</strong> 22 weeks</div>
+    <div class="cover-meta-item"><strong>Stack:</strong>
+      <span class="pill" style="background:#ebf8ff;color:#2b6cb0">FastAPI</span>
+      <span class="pill" style="background:#f0fff4;color:#276749">httpx</span>
+      <span class="pill" style="background:#faf5ff;color:#6b46c1">Celery</span>
+      <span class="pill" style="background:#e6fffa;color:#2c7a7b">Redis</span>
+      <span class="pill" style="background:#fff5f0;color:#c05621">Playwright</span>
+      <span class="pill" style="background:#ebf8ff;color:#2b6cb0">React</span>
+    </div>
+  </div>
+  <div style="font-size: 11px; color: var(--text3); margin-top: 2rem; display: flex; justify-content: space-between; border-top: 1px solid var(--border); pt: 1rem;">
+    <span>Current Status: <strong style="color:var(--green600)">Phase 1 Complete</strong></span>
+    <span>Last Updated: <strong>April 26, 2026</strong></span>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ TOC ═══════════════════════════════════ -->
+<div class="toc">
+  <h3>Contents</h3>
+  <ul class="toc-list">
+    <li><a href="#phase1">Phase 1 — Critical fixes</a></li>
+    <li><a href="#phase2">Phase 2 — Core upgrades</a></li>
+    <li><a href="#phase3">Phase 3 — Advanced features</a></li>
+    <li><a href="#phase4">Phase 4 — Product layer</a></li>
+    <li><a href="#arch">Target architecture</a></li>
+    <li><a href="#stack">Tech stack changes</a></li>
+    <li><a href="#security">Security hardening</a></li>
+    <li><a href="#async">Async migration guide</a></li>
+    <li><a href="#testing">Testing strategy</a></li>
+    <li><a href="#perf">Performance targets</a></li>
+    <li><a href="#startup">Startup positioning</a></li>
+    <li><a href="#portfolio">Portfolio README</a></li>
+  </ul>
+</div>
+
+<!-- ═══════════════════════════════════ PHASE 1 ═══════════════════════════════════ -->
+<div id="phase1" class="section-header">
+  <div class="section-icon" style="background:#fff5f5;color:#c53030;border:1px solid #fed7d7;">1</div>
+  <div>
+    <h2>Phase 1 — Critical fixes</h2>
+    <p class="text-muted" style="margin-top:2px">Weeks 1–2 &nbsp;·&nbsp; ~20 hrs &nbsp;·&nbsp; Stop the bleeding — fix the rendering bug, close the open attack surface, prevent irrecoverable server states</p>
+  </div>
+</div>
+
+<div class="callout success">
+  <div class="callout-title">Phase 1 Status: COMPLETED</div>
+  All critical fixes have been implemented. The results table is now fully functional with aligned field names, API key authentication is enforced on all endpoints, SSRF protection is active in the crawler, and scan state management has been overhauled for production-grade stability.
+</div>
+
+<div class="phase-card" id="p1-card">
+  <div class="phase-header">
+    <div class="phase-label">
+      <div class="phase-dot" style="background:#E24B4A;"></div>
+      <div>
+        <div class="phase-title">Critical fixes</div>
+        <div class="phase-subtitle">Security patches, rendering bug fix, state management overhaul, env config</div>
+      </div>
+    </div>
+    <div class="phase-stats">
+      <div class="stat-box"><div class="stat-num">8</div><div class="stat-label">Tasks</div></div>
+      <div class="stat-box"><div class="stat-num" style="color:#276749;">8</div><div class="stat-label">Done</div></div>
+      <div class="stat-box"><div class="stat-num" style="color:#276749;">100%</div><div class="stat-label">Progress</div></div>
+    </div>
+  </div>
+  <div class="tasks-list">
+
+    <!-- T1 -->
+    <div class="task-item done">
+      <div class="task-summary" onclick="toggle(this)">
+        <div class="task-num">1</div>
+        <div class="task-info">
+          <div class="task-name">Fix results key mismatch <span class="pill" style="background:#c6f6d5;color:#22543d;margin-left:8px;">Done</span></div>
+          <div class="task-desc">Vulnerability objects use <code>vuln_type</code> and <code>severity_level</code> consistently across API and UI</div>
+          <div class="task-badges">
+            <span class="badge" style="background:#fff5f5;color:#c53030;border-color:#fed7d7;">CRITICAL</span>
+            <span class="badge" style="background:#ebf8ff;color:#2b6cb0;border-color:#bee3f8;">React</span>
+            <span class="badge" style="background:#ebf8ff;color:#2b6cb0;border-color:#bee3f8;">Bug</span>
+          </div>
+        </div>
+        <div class="task-right">
+          <span class="effort-chip" style="background:#f0fff4;color:#276749;">1 hr</span>
+          <span class="prio-chip" style="background:#fff5f5;color:#c53030;">critical</span>
+          <svg class="chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 4l4 4-4 4"/></svg>
+        </div>
+      </div>
+      <div class="task-detail">
+        <div class="detail-section">
+          <div class="detail-label">What &amp; why</div>
+          <div class="detail-text"><code>ResultsTable.jsx</code> mapped <code>r.vulnerability_type</code> but the <code>Vulnerability</code> dataclass used <code>vuln_type</code>. Keys are now aligned across the stack, ensuring findings display correctly in the results table.</div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Implementation</div>
+          <pre class="code-block"><span class="cm">// Aligned fields:</span>
+vuln_type        <span class="cm">// matches Pydantic model</span>
+description      <span class="cm">// matches Pydantic model</span>
+severity_level   <span class="cm">// matches Pydantic model</span>
+confidence       <span class="cm">// matches Pydantic model</span></pre>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Tags</div>
+          <div class="tag-row"><span class="tag">React</span><span class="tag">FastAPI</span><span class="tag">Bug</span><span class="tag">UI</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- T2 -->
+    <div class="task-item done">
+      <div class="task-summary" onclick="toggle(this)">
+        <div class="task-num">2</div>
+        <div class="task-info">
+          <div class="task-name">Add API key authentication <span class="pill" style="background:#c6f6d5;color:#22543d;margin-left:8px;">Done</span></div>
+          <div class="task-desc">X-API-Key header required for all /scan endpoints — integrated into Security module</div>
+          <div class="task-badges">
+            <span class="badge" style="background:#fff5f5;color:#c53030;border-color:#fed7d7;">CRITICAL</span>
+            <span class="badge" style="background:#fff5f0;color:#c05621;border-color:#fed7aa;">Security</span>
+          </div>
+        </div>
+        <div class="task-right">
+          <span class="effort-chip" style="background:#fffbeb;color:#b7791f;">2 hrs</span>
+          <span class="prio-chip" style="background:#fff5f5;color:#c53030;">critical</span>
+          <svg class="chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 4l4 4-4 4"/></svg>
+        </div>
+      </div>
+      <div class="task-detail">
+        <div class="detail-section">
+          <div class="detail-label">What &amp; why</div>
+          <div class="detail-text">Added a FastAPI dependency that validates an <code>X-API-Key</code> header against an environment variable on every route, preventing unauthorized scan triggers.</div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Implementation</div>
+          <pre class="code-block"><span class="cm"># backend/app/core/security.py</span>
+<span class="ck">async def</span> <span class="cn">get_api_key</span>(api_key_header: str = Security(api_key_header)):
+    <span class="ck">if</span> api_key_header != settings.API_KEY:
+        <span class="ck">raise</span> HTTPException(status_code=<span class="cv">403</span>, detail=<span class="cs">"Invalid API key"</span>)</pre>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Tags</div>
+          <div class="tag-row"><span class="tag">Security</span><span class="tag">FastAPI</span><span class="tag">Auth</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- T3 -->
+    <div class="task-item done">
+      <div class="task-summary" onclick="toggle(this)">
+        <div class="task-num">3</div>
+        <div class="task-info">
+          <div class="task-name">SSRF target blocklist <span class="pill" style="background:#c6f6d5;color:#22543d;margin-left:8px;">Done</span></div>
+          <div class="task-desc">Hard block on 127.0.0.1, 169.254.169.254, and RFC1918 private ranges</div>
+          <div class="task-badges">
+            <span class="badge" style="background:#fff5f5;color:#c53030;border-color:#fed7d7;">CRITICAL</span>
+            <span class="badge" style="background:#fff5f0;color:#c05621;border-color:#fed7aa;">Security</span>
+            <span class="badge" style="background:#fff5f0;color:#c05621;border-color:#fed7aa;">SSRF</span>
+          </div>
+        </div>
+        <div class="task-right">
+          <span class="effort-chip" style="background:#fffbeb;color:#b7791f;">2 hrs</span>
+          <span class="prio-chip" style="background:#fff5f5;color:#c53030;">critical</span>
+          <svg class="chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 4l4 4-4 4"/></svg>
+        </div>
+      </div>
+      <div class="task-detail">
+        <div class="detail-section">
+          <div class="detail-label">What &amp; why</div>
+          <div class="detail-text">Implemented a hard refusal in <code>WebCrawler.validate_target()</code> to prevent the scanner from being used to probe internal resources or cloud metadata endpoints.</div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Implementation</div>
+          <pre class="code-block"><span class="cm"># backend/app/services/scanner/crawler.py</span>
+<span class="ck">if not</span> self._is_safe_ip(hostname):
+    <span class="ck">raise</span> ValueError(<span class="cs">"Target resolves to a blocked IP range"</span>)</pre>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Tags</div>
+          <div class="tag-row"><span class="tag">Security</span><span class="tag">SSRF</span><span class="tag">Python</span><span class="tag">Validation</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- T4 -->
+    <div class="task-item done">
+      <div class="task-summary" onclick="toggle(this)">
+        <div class="task-num">4</div>
+        <div class="task-info">
+          <div class="task-name">Session-keyed scan state <span class="pill" style="background:#c6f6d5;color:#22543d;margin-left:8px;">Done</span></div>
+          <div class="task-desc">Scans identified by UUID4; manager tracks logs and results per session</div>
+          <div class="task-badges">
+            <span class="badge" style="background:#fff5f5;color:#c53030;border-color:#fed7d7;">CRITICAL</span>
+            <span class="badge" style="background:#faf5ff;color:#6b46c1;border-color:#e9d8fd;">Architecture</span>
+          </div>
+        </div>
+        <div class="task-right">
+          <span class="effort-chip" style="background:#fffbeb;color:#b7791f;">4 hrs</span>
+          <span class="prio-chip" style="background:#fff5f5;color:#c53030;">critical</span>
+          <svg class="chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 4l4 4-4 4"/></svg>
+        </div>
+      </div>
+      <div class="task-detail">
+        <div class="detail-section">
+          <div class="detail-label">What &amp; why</div>
+          <div class="detail-text">Replaced the global singleton state with a <code>ScanManager</code> that keys sessions by UUID, allowing multiple scans to be tracked and managed independently.</div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Implementation</div>
+          <pre class="code-block"><span class="cm"># backend/app/services/scanner/manager.py</span>
+<span class="ck">class</span> <span class="cn">ScanManager</span>:
+    <span class="ck">def</span> <span class="cn">__init__</span>(self):
+        self.scans: dict[str, ScanResponse] = {}</pre>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Tags</div>
+          <div class="tag-row"><span class="tag">Architecture</span><span class="tag">FastAPI</span><span class="tag">State</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- T5 -->
+    <div class="task-item done">
+      <div class="task-summary" onclick="toggle(this)">
+        <div class="task-num">5</div>
+        <div class="task-info">
+          <div class="task-name">FastAPI lifespan hook <span class="pill" style="background:#c6f6d5;color:#22543d;margin-left:8px;">Done</span></div>
+          <div class="task-desc">Proper startup/shutdown hooks for scanner manager and resource cleanup</div>
+          <div class="task-badges">
+            <span class="badge" style="background:#fffbeb;color:#b7791f;border-color:#fbd38d;">HIGH</span>
+            <span class="badge" style="background:#ebf8ff;color:#2b6cb0;border-color:#bee3f8;">Async</span>
+          </div>
+        </div>
+        <div class="task-right">
+          <span class="effort-chip" style="background:#f0fff4;color:#276749;">1 hr</span>
+          <span class="prio-chip" style="background:#fffbeb;color:#b7791f;">high</span>
+          <svg class="chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 4l4 4-4 4"/></svg>
+        </div>
+      </div>
+      <div class="task-detail">
+        <div class="detail-section">
+          <div class="detail-label">What &amp; why</div>
+          <div class="detail-text">Implemented <code>asynccontextmanager</code> lifespan for the FastAPI app, ensuring proper initialization and cleanup of background resources.</div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Implementation</div>
+          <pre class="code-block"><span class="cm"># backend/app/main.py</span>
+@asynccontextmanager
+<span class="ck">async def</span> <span class="cn">lifespan</span>(app: FastAPI):
+    logger.info(<span class="cs">"SentinalScan API starting up..."</span>)
+    <span class="ck">yield</span></pre>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Tags</div>
+          <div class="tag-row"><span class="tag">Bug</span><span class="tag">Async</span><span class="tag">Python</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- T6 -->
+    <div class="task-item done">
+      <div class="task-summary" onclick="toggle(this)">
+        <div class="task-num">6</div>
+        <div class="task-info">
+          <div class="task-name">API_BASE environment variable <span class="pill" style="background:#c6f6d5;color:#22543d;margin-left:8px;">Done</span></div>
+          <div class="task-desc">Frontend dynamically reads API endpoint from .env via VITE_API_BASE</div>
+          <div class="task-badges">
+            <span class="badge" style="background:#fffbeb;color:#b7791f;border-color:#fbd38d;">HIGH</span>
+            <span class="badge" style="background:#ebf8ff;color:#2b6cb0;border-color:#bee3f8;">Frontend</span>
+            <span class="badge" style="background:#e6fffa;color:#2c7a7b;border-color:#b2f5ea;">DevOps</span>
+          </div>
+        </div>
+        <div class="task-right">
+          <span class="effort-chip" style="background:#f0fff4;color:#276749;">1 hr</span>
+          <span class="prio-chip" style="background:#fffbeb;color:#b7791f;">high</span>
+          <svg class="chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 4l4 4-4 4"/></svg>
+        </div>
+      </div>
+      <div class="task-detail">
+        <div class="detail-section">
+          <div class="detail-label">What &amp; why</div>
+          <div class="detail-text">Removed hardcoded localhost URLs in the frontend and replaced them with <code>import.meta.env.VITE_API_BASE</code>, enabling easy deployment across different environments.</div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Implementation</div>
+          <pre class="code-block"><span class="cm">// frontend/.env</span>
+VITE_API_BASE=http://localhost:8000</pre>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Tags</div>
+          <div class="tag-row"><span class="tag">Frontend</span><span class="tag">DevOps</span><span class="tag">Config</span><span class="tag">Vite</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- T7 -->
+    <div class="task-item done">
+      <div class="task-summary" onclick="toggle(this)">
+        <div class="task-num">7</div>
+        <div class="task-info">
+          <div class="task-name">Cleanup duplicate App.jsx <span class="pill" style="background:#c6f6d5;color:#22543d;margin-left:8px;">Done</span></div>
+          <div class="task-desc">Unified entry point at src/app/App.jsx; removed stale files</div>
+          <div class="task-badges">
+            <span class="badge" style="background:#f7fafc;color:#718096;border-color:#e2e8f0;">MEDIUM</span>
+            <span class="badge" style="background:#ebf8ff;color:#2b6cb0;border-color:#bee3f8;">Cleanup</span>
+          </div>
+        </div>
+        <div class="task-right">
+          <span class="effort-chip" style="background:#f0fff4;color:#276749;">0.5 hr</span>
+          <span class="prio-chip" style="background:#f7fafc;color:#718096;">medium</span>
+          <svg class="chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 4l4 4-4 4"/></svg>
+        </div>
+      </div>
+      <div class="task-detail">
+        <div class="detail-section">
+          <div class="detail-label">What &amp; why</div>
+          <div class="detail-text">Cleaned up the frontend directory by removing redundant <code>App.jsx</code> files and ensuring the entry point correctly points to the modernized component architecture.</div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Implementation</div>
+          <pre class="code-block"><span class="cm"># Cleanup:</span>
+rm src/App.jsx
+rm src/App.css</pre>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Tags</div>
+          <div class="tag-row"><span class="tag">Cleanup</span><span class="tag">Frontend</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- T8 -->
+    <div class="task-item done">
+      <div class="task-summary" onclick="toggle(this)">
+        <div class="task-num">8</div>
+        <div class="task-info">
+          <div class="task-name">Rate-limit /scan/start <span class="pill" style="background:#c6f6d5;color:#22543d;margin-left:8px;">Done</span></div>
+          <div class="task-desc">Max 1 concurrent scan enforced by ScanManager; prevents resource exhaustion</div>
+          <div class="task-badges">
+            <span class="badge" style="background:#f7fafc;color:#718096;border-color:#e2e8f0;">MEDIUM</span>
+            <span class="badge" style="background:#fff5f0;color:#c05621;border-color:#fed7aa;">Security</span>
+          </div>
+        </div>
+        <div class="task-right">
+          <span class="effort-chip" style="background:#f0fff4;color:#276749;">1 hr</span>
+          <span class="prio-chip" style="background:#f7fafc;color:#718096;">medium</span>
+          <svg class="chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 4l4 4-4 4"/></svg>
+        </div>
+      </div>
+      <div class="task-detail">
+        <div class="detail-section">
+          <div class="detail-label">What &amp; why</div>
+          <div class="detail-text">Without a rate limit, a legitimate user who double-clicks or an attacker with the key can flood the job queue. Add a simple active-session count check. This is replaced by proper Redis-backed rate limiting in Phase 2.</div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Implementation</div>
+          <pre class="code-block">@app.post(<span class="cs">"/scan/start"</span>, dependencies=[Depends(require_api_key)])
+<span class="ck">async def</span> <span class="cn">start_scan</span>(request: ScanRequest):
+    active_scans = [
+        s <span class="ck">for</span> s <span class="ck">in</span> scan_sessions.values()
+        <span class="ck">if</span> s.is_scanning
+    ]
+    <span class="ck">if</span> len(active_scans) >= <span class="cv">1</span>:
+        active_id = active_scans[<span class="cv">0</span>].scan_id
+        <span class="ck">raise</span> HTTPException(
+            status_code=<span class="cv">429</span>,
+            detail={
+                <span class="cs">"error"</span>: <span class="cs">"scan_in_progress"</span>,
+                <span class="cs">"active_scan_id"</span>: active_id,
+                <span class="cs">"message"</span>: <span class="cs">"Stop the active scan before starting a new one"</span>
+            }
+        )
+    <span class="cm"># ... proceed to start scan</span></pre>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Tags</div>
+          <div class="tag-row"><span class="tag">Security</span><span class="tag">FastAPI</span><span class="tag">Rate limiting</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /tasks-list phase 1 -->
+</div><!-- /phase-card -->
+
+
+<!-- ═══════════════════════════════════ PHASE 2 ═══════════════════════════════════ -->
+<div id="phase2" class="section-header">
+  <div class="section-icon" style="background:#fffbeb;color:#b7791f;border:1px solid #fbd38d;">2</div>
+  <div>
+    <h2>Phase 2 — Core upgrades</h2>
+    <p class="text-muted" style="margin-top:2px">Weeks 3–7 &nbsp;·&nbsp; ~60 hrs &nbsp;·&nbsp; Async I/O, Redis persistence, Docker Compose, dependency pinning, test suite, CI pipeline</p>
+  </div>
+</div>
+
+<div class="phase-card">
+  <div class="phase-header">
+    <div class="phase-label">
+      <div class="phase-dot" style="background:#EF9F27;"></div>
+      <div>
+        <div class="phase-title">Core upgrades</div>
+        <div class="phase-subtitle">Replace blocking I/O with async httpx, add Redis state persistence, containerize for reproducible deployment, establish test coverage</div>
+      </div>
+    </div>
+    <div class="phase-stats">
+      <div class="stat-box"><div class="stat-num">8</div><div class="stat-label">Tasks</div></div>
+      <div class="stat-box"><div class="stat-num">~60h</div><div class="stat-label">Effort</div></div>
+    </div>
+  </div>
+  <div class="tasks-list">
+
+    <div class="task-item">
+      <div class="task-summary" onclick="toggle(this)">
+        <div class="task-num" style="background:#fffbeb;color:#b7791f;">1</div>
+        <div class="task-info">
+          <div class="task-name">Migrate crawler to httpx + asyncio</div>
+          <div class="task-desc">Replace requests.Session + ThreadPoolExecutor with AsyncClient and asyncio.gather()</div>
+          <div class="task-badges">
+            <span class="badge" style="background:#fff5f5;color:#c53030;border-color:#fed7d7;">CRITICAL</span>
+            <span class="badge" style="background:#f0fff4;color:#276749;border-color:#c6f6d5;">Performance</span>
+          </div>
+        </div>
+        <div class="task-right">
+          <span class="effort-chip" style="background:#fffbeb;color:#b7791f;">8 hrs</span>
+          <span class="prio-chip" style="background:#fff5f5;color:#c53030;">critical</span>
+          <svg class="chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 4l4 4-4 4"/></svg>
+        </div>
+      </div>
+      <div class="task-detail">
+        <div class="detail-section">
+          <div class="detail-label">What &amp; why</div>
+          <div class="detail-text">The current crawler uses <code>ThreadPoolExecutor</code> with a manual future-tracking loop that has a logic bug — <code>as_completed()</code> is re-created each iteration so futures never correctly drain. Migrating to <code>httpx.AsyncClient</code> with a semaphore-gated asyncio queue fixes the bug and cuts scan time by ~60% on I/O-bound targets. Execute in 4 sub-steps to avoid a big-bang rewrite.</div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Implementation</div>
+          <pre class="code-block"><span class="cm"># Sub-step 1: swap httpx.Client (sync) — validate HTTP layer alone</span>
+<span class="cm"># Sub-step 2: convert crawl_page() to async, run via asyncio.run()</span>
+<span class="cm"># Sub-step 3: convert tester methods to async</span>
+<span class="cm"># Sub-step 4: full async pipeline, remove ThreadPoolExecutor</span>
+
+<span class="cm"># backend/crawler_async.py (sub-step 4)</span>
+<span class="ck">import</span> httpx, asyncio
+<span class="ck">from</span> selectolax.parser <span class="ck">import</span> HTMLParser
+
+<span class="ck">class</span> <span class="cn">AsyncWebCrawler</span>:
+    <span class="ck">async def</span> <span class="cn">__aenter__</span>(self):
+        self.client = httpx.AsyncClient(
+            headers={<span class="cs">"User-Agent"</span>: self.config.user_agent},
+            verify=self.config.verify_ssl,
+            timeout=self.config.timeout,
+            limits=httpx.Limits(max_connections=self.config.workers)
+        )
+        <span class="ck">return</span> self
+
+    <span class="ck">async def</span> <span class="cn">crawl</span>(self) -> list[str]:
+        queue = asyncio.Queue()
+        <span class="ck">await</span> queue.put(self.base_url)
+        visited, pages = set(), []
+        sem = asyncio.Semaphore(self.config.workers)
+
+        <span class="ck">async def</span> <span class="cn">worker</span>():
+            <span class="ck">while True</span>:
+                url = <span class="ck">await</span> queue.get()
+                <span class="ck">if</span> url <span class="ck">in</span> visited <span class="ck">or</span> len(visited) >= self.config.max_pages:
+                    queue.task_done(); <span class="ck">continue</span>
+                visited.add(url)
+                <span class="ck">async with</span> sem:
+                    resp = <span class="ck">await</span> self._fetch(url)
+                <span class="ck">if</span> resp:
+                    pages.append(url)
+                    <span class="ck">for</span> lnk <span class="ck">in</span> self._extract_links(url, resp.text):
+                        <span class="ck">if</span> lnk <span class="ck">not in</span> visited:
+                            <span class="ck">await</span> queue.put(lnk)
+                queue.task_done()
+
+        workers = [asyncio.create_task(worker())
+                   <span class="ck">for</span> _ <span class="ck">in range</span>(self.config.workers)]
+        <span class="ck">await</span> queue.join()
+        <span class="ck">for</span> w <span class="ck">in</span> workers: w.cancel()
+        <span class="ck">return</span> pages</pre>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Tags</div>
+          <div class="tag-row"><span class="tag">Performance</span><span class="tag">Async</span><span class="tag">httpx</span><span class="tag">Crawler</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="task-item">
+      <div class="task-summary" onclick="toggle(this)">
+        <div class="task-num" style="background:#fffbeb;color:#b7791f;">2</div>
+        <div class="task-info">
+          <div class="task-name">Parallelize vulnerability tests per page</div>
+          <div class="task-desc">asyncio.gather() collapses per-page test time from sequential to worst-single-test</div>
+          <div class="task-badges">
+            <span class="badge" style="background:#fffbeb;color:#b7791f;border-color:#fbd38d;">HIGH</span>
+            <span class="badge" style="background:#f0fff4;color:#276749;border-color:#c6f6d5;">Performance</span>
+          </div>
+        </div>
+        <div class="task-right">
+          <span class="effort-chip" style="background:#fffbeb;color:#b7791f;">5 hrs</span>
+          <span class="prio-chip" style="background:#fffbeb;color:#b7791f;">high</span>
+          <svg class="chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 4l4 4-4 4"/></svg>
+        </div>
+      </div>
+      <div class="task-detail">
+        <div class="detail-section">
+          <div class="detail-label">What &amp; why</div>
+          <div class="detail-text"><code>test_sqli()</code> sleeps 3s per time-based payload. With 10 forms and 3 payloads each, one page can take 90 seconds sequentially. Running all tests for a page concurrently via <code>asyncio.gather()</code> collapses this to the slowest single test (~3s), a 30× improvement for pages with many forms.</div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Implementation</div>
+          <pre class="code-block"><span class="ck">async def</span> <span class="cn">test_page</span>(self, url: str, response: httpx.Response):
+    forms = self._extract_forms(url, response.text)
+
+    page_tasks = [
+        self.test_open_redirect(url),
+        self.test_path_traversal(url),
+        self.test_info_disclosure(url, response.text),
+        self.test_security_headers(url, response),
+        self.test_cookie_security(url, response),
+        self.test_sensitive_files(url),
+        *[self._test_form(f, url) <span class="ck">for</span> f <span class="ck">in</span> forms],
+    ]
+    results = <span class="ck">await</span> asyncio.gather(*page_tasks, return_exceptions=<span class="cv">True</span>)
+
+    vulns = []
+    <span class="ck">for</span> r <span class="ck">in</span> results:
+        <span class="ck">if isinstance</span>(r, list): vulns.extend(r)
+        <span class="ck">elif isinstance</span>(r, Vulnerability): vulns.append(r)
+        <span class="ck">elif isinstance</span>(r, Exception):
+            self.logger.warning(<span class="cs">f"Test error: {r}"</span>)
+    <span class="ck">return</span> vulns
+
+<span class="ck">async def</span> <span class="cn">_test_form</span>(self, form, url: str) -> list[Vulnerability]:
+    results = <span class="ck">await</span> asyncio.gather(
+        self.test_xss(form, url),
+        self.test_sqli(form, url),
+        self.test_csrf(form, url),
+        return_exceptions=<span class="cv">True</span>
+    )
+    <span class="ck">return</span> [r <span class="ck">for</span> r <span class="ck">in</span> results <span class="ck">if isinstance</span>(r, Vulnerability)]</pre>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Tags</div>
+          <div class="tag-row"><span class="tag">Performance</span><span class="tag">Async</span><span class="tag">Testing</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="task-item">
+      <div class="task-summary" onclick="toggle(this)">
+        <div class="task-num" style="background:#fffbeb;color:#b7791f;">3</div>
+        <div class="task-info">
+          <div class="task-name">Redis scan state + result persistence</div>
+          <div class="task-desc">Replace in-memory dict — scan results survive API restarts</div>
+          <div class="task-badges">
+            <span class="badge" style="background:#fffbeb;color:#b7791f;border-color:#fbd38d;">HIGH</span>
+            <span class="badge" style="background:#e6fffa;color:#2c7a7b;border-color:#b2f5ea;">Redis</span>
+          </div>
+        </div>
+        <div class="task-right">
+          <span class="effort-chip" style="background:#fffbeb;color:#b7791f;">6 hrs</span>
+          <span class="prio-chip" style="background:#fffbeb;color:#b7791f;">high</span>
+          <svg class="chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 4l4 4-4 4"/></svg>
+        </div>
+      </div>
+      <div class="task-detail">
+        <div class="detail-section">
+          <div class="detail-label">What &amp; why</div>
+          <div class="detail-text">In-memory <code>scan_sessions</code> is wiped on every API restart. Redis gives persistence, pub/sub for real-time WebSocket log broadcasting without per-connection state, and becomes the Celery broker in Phase 3.</div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Implementation</div>
+          <pre class="code-block"><span class="cm"># backend/store.py</span>
+<span class="ck">import</span> redis.asyncio <span class="ck">as</span> redis, json, os
+
+<span class="cv">_r</span> = redis.from_url(os.environ[<span class="cs">"REDIS_URL"</span>])
+
+<span class="ck">async def</span> <span class="cn">save_scan_status</span>(scan_id: str, status: dict, ttl: int = <span class="cv">86400</span>):
+    <span class="ck">await</span> _r.setex(<span class="cs">f"scan:{scan_id}:status"</span>, ttl, json.dumps(status))
+
+<span class="ck">async def</span> <span class="cn">append_result</span>(scan_id: str, vuln: dict):
+    <span class="ck">await</span> _r.rpush(<span class="cs">f"scan:{scan_id}:results"</span>, json.dumps(vuln))
+    <span class="ck">await</span> _r.expire(<span class="cs">f"scan:{scan_id}:results"</span>, <span class="cv">86400</span>)
+
+<span class="ck">async def</span> <span class="cn">get_results</span>(scan_id: str) -> list[dict]:
+    raw = <span class="ck">await</span> _r.lrange(<span class="cs">f"scan:{scan_id}:results"</span>, <span class="cv">0</span>, -<span class="cv">1</span>)
+    <span class="ck">return</span> [json.loads(r) <span class="ck">for</span> r <span class="ck">in</span> raw]
+
+<span class="ck">async def</span> <span class="cn">publish_log</span>(scan_id: str, entry: dict):
+    <span class="ck">await</span> _r.publish(<span class="cs">f"logs:{scan_id}"</span>, json.dumps(entry))
+
+<span class="cm"># api.py — WebSocket subscribes to Redis pub/sub per scan</span>
+@app.websocket(<span class="cs">"/ws/logs/{scan_id}"</span>)
+<span class="ck">async def</span> <span class="cn">ws_logs</span>(ws: WebSocket, scan_id: str):
+    <span class="ck">await</span> ws.accept()
+    <span class="ck">async with</span> _r.pubsub() <span class="ck">as</span> ps:
+        <span class="ck">await</span> ps.subscribe(<span class="cs">f"logs:{scan_id}"</span>)
+        <span class="ck">async for</span> msg <span class="ck">in</span> ps.listen():
+            <span class="ck">if</span> msg[<span class="cs">"type"</span>] == <span class="cs">"message"</span>:
+                <span class="ck">await</span> ws.send_text(msg[<span class="cs">"data"</span>].decode())</pre>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Tags</div>
+          <div class="tag-row"><span class="tag">Redis</span><span class="tag">Persistence</span><span class="tag">WebSocket</span><span class="tag">Pub/Sub</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="task-item">
+      <div class="task-summary" onclick="toggle(this)">
+        <div class="task-num" style="background:#fffbeb;color:#b7791f;">4</div>
+        <div class="task-info">
+          <div class="task-name">Docker Compose full stack</div>
+          <div class="task-desc">API + Redis + Vite dev server in one docker compose up command</div>
+          <div class="task-badges">
+            <span class="badge" style="background:#fffbeb;color:#b7791f;border-color:#fbd38d;">HIGH</span>
+            <span class="badge" style="background:#e6fffa;color:#2c7a7b;border-color:#b2f5ea;">DevOps</span>
+          </div>
+        </div>
+        <div class="task-right">
+          <span class="effort-chip" style="background:#fffbeb;color:#b7791f;">4 hrs</span>
+          <span class="prio-chip" style="background:#fffbeb;color:#b7791f;">high</span>
+          <svg class="chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 4l4 4-4 4"/></svg>
+        </div>
+      </div>
+      <div class="task-detail">
+        <div class="detail-section">
+          <div class="detail-label">What &amp; why</div>
+          <div class="detail-text">No Dockerfile exists today. A reviewer or new contributor cannot run the project without manual steps. One-command setup is non-negotiable for a portfolio piece and a prerequisite for CI.</div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Implementation</div>
+          <pre class="code-block"><span class="cm"># docker-compose.yml</span>
+services:
+  api:
+    build: ./backend
+    ports: [<span class="cs">"8000:8000"</span>]
+    environment:
+      - <span class="cv">REDIS_URL</span>=redis://redis:6379
+      - <span class="cv">SENTINAL_API_KEY</span>=${SENTINAL_API_KEY}
+    depends_on: [redis]
+    volumes: [<span class="cs">"./reports:/app/reports"</span>]
+    restart: unless-stopped
+
+  worker:   <span class="cm"># Phase 3 Celery worker — add now, enable later</span>
+    build: ./backend
+    command: celery -A tasks worker -l info
+    environment:
+      - <span class="cv">REDIS_URL</span>=redis://redis:6379
+    depends_on: [redis]
+    profiles: [<span class="cs">"celery"</span>]   <span class="cm"># opt-in until Phase 3</span>
+
+  frontend:
+    build: ./frontend
+    ports: [<span class="cs">"5173:5173"</span>]
+    environment:
+      - <span class="cv">VITE_API_BASE</span>=http://localhost:8000
+    depends_on: [api]
+
+  redis:
+    image: redis:7-alpine
+    volumes: [<span class="cs">"redis_data:/data"</span>]
+    command: redis-server --save 60 1
+
+volumes:
+  redis_data:
+
+<span class="cm"># backend/Dockerfile</span>
+FROM python:3.12-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+CMD [<span class="cs">"uvicorn"</span>, <span class="cs">"api:app"</span>, <span class="cs">"--host"</span>, <span class="cs">"0.0.0.0"</span>, <span class="cs">"--port"</span>, <span class="cs">"8000"</span>]</pre>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Tags</div>
+          <div class="tag-row"><span class="tag">Docker</span><span class="tag">DevOps</span><span class="tag">Redis</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="task-item">
+      <div class="task-summary" onclick="toggle(this)">
+        <div class="task-num" style="background:#fffbeb;color:#b7791f;">5</div>
+        <div class="task-info">
+          <div class="task-name">Pin all dependencies with lockfile</div>
+          <div class="task-desc">pip-compile generates a reproducible requirements.txt with hashes</div>
+          <div class="task-badges">
+            <span class="badge" style="background:#fffbeb;color:#b7791f;border-color:#fbd38d;">HIGH</span>
+            <span class="badge" style="background:#e6fffa;color:#2c7a7b;border-color:#b2f5ea;">Security</span>
+          </div>
+        </div>
+        <div class="task-right">
+          <span class="effort-chip" style="background:#f0fff4;color:#276749;">1 hr</span>
+          <span class="prio-chip" style="background:#fffbeb;color:#b7791f;">high</span>
+          <svg class="chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 4l4 4-4 4"/></svg>
+        </div>
+      </div>
+      <div class="task-detail">
+        <div class="detail-section">
+          <div class="detail-label">What &amp; why</div>
+          <div class="detail-text">All five Python dependencies are unpinned (<code>fastapi</code> not <code>fastapi==0.115.0</code>). An upstream breaking change will silently break the next deployment. Use <code>pip-tools</code> to maintain a human-editable <code>requirements.in</code> and a machine-generated locked <code>requirements.txt</code> with hashes for supply-chain security.</div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Implementation</div>
+          <pre class="code-block"><span class="cm"># backend/requirements.in  (human-maintained)</span>
+fastapi>=0.115,<1.0
+uvicorn[standard]>=0.30
+httpx>=0.27
+redis[asyncio]>=5.0
+beautifulsoup4>=4.12
+selectolax>=0.3
+pydantic>=2.7
+structlog>=24.0
+celery[redis]>=5.4
+
+<span class="cm"># Generate the locked file:</span>
+pip install pip-tools
+pip-compile requirements.in \
+  --output-file requirements.txt \
+  --generate-hashes \
+  --strip-extras
+
+<span class="cm"># Add to CI to detect drift:</span>
+pip-compile requirements.in --dry-run --quiet || \
+  (echo "requirements.txt is out of date" && exit 1)</pre>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Tags</div>
+          <div class="tag-row"><span class="tag">DevOps</span><span class="tag">Dependencies</span><span class="tag">Security</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="task-item">
+      <div class="task-summary" onclick="toggle(this)">
+        <div class="task-num" style="background:#fffbeb;color:#b7791f;">6</div>
+        <div class="task-info">
+          <div class="task-name">Decompose VulnerabilityScanner.scan()</div>
+          <div class="task-desc">Split the 150-line method into _phase_crawl(), _phase_test(), _summarize()</div>
+          <div class="task-badges">
+            <span class="badge" style="background:#f7fafc;color:#718096;border-color:#e2e8f0;">MEDIUM</span>
+            <span class="badge" style="background:#faf5ff;color:#6b46c1;border-color:#e9d8fd;">Refactor</span>
+          </div>
+        </div>
+        <div class="task-right">
+          <span class="effort-chip" style="background:#fffbeb;color:#b7791f;">3 hrs</span>
+          <span class="prio-chip" style="background:#f7fafc;color:#718096;">medium</span>
+          <svg class="chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 4l4 4-4 4"/></svg>
+        </div>
+      </div>
+      <div class="task-detail">
+        <div class="detail-section">
+          <div class="detail-label">What &amp; why</div>
+          <div class="detail-text">The 150-line <code>scan()</code> method does authorization, URL validation, crawl orchestration, vulnerability testing, deduplication, and console printing. Each responsibility should be in its own method so they can be tested, overridden, and reasoned about independently.</div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Implementation</div>
+          <pre class="code-block"><span class="ck">class</span> <span class="cn">VulnerabilityScanner</span>:
+
+    <span class="ck">async def</span> <span class="cn">scan</span>(self) -> list[Vulnerability]:
+        self._verify_authorization()   <span class="cm"># raises PermissionError if denied</span>
+        self._validate_target()         <span class="cm"># raises ValueError on bad URL/SSRF</span>
+        self.start_time = time.time()
+        <span class="ck">await</span> self._phase_crawl()
+        <span class="ck">await</span> self._phase_test()
+        self._deduplicate_vulnerabilities()
+        self._emit_summary()
+        <span class="ck">return</span> self.vulnerabilities
+
+    <span class="ck">async def</span> <span class="cn">_phase_crawl</span>(self):
+        self.logger.info(<span class="cs">"[PHASE 1] Crawling"</span>)
+        <span class="ck">async with</span> AsyncWebCrawler(self.config, self.logger) <span class="ck">as</span> crawler:
+            self.pages = <span class="ck">await</span> crawler.crawl()
+            self._page_cache = crawler.response_cache
+
+    <span class="ck">async def</span> <span class="cn">_phase_test</span>(self):
+        self.logger.info(<span class="cs">f"[PHASE 2] Testing {len(self.pages)} pages"</span>)
+        tester = AsyncVulnerabilityTester(self.config, self.logger)
+        coros = [tester.test_page(p, self._page_cache.get(p))
+                 <span class="ck">for</span> p <span class="ck">in</span> self.pages <span class="ck">if</span> self._scan_active]
+        results = <span class="ck">await</span> asyncio.gather(*coros, return_exceptions=<span class="cv">True</span>)
+        <span class="ck">for</span> r <span class="ck">in</span> results:
+            <span class="ck">if isinstance</span>(r, list): self.vulnerabilities.extend(r)
+
+    <span class="ck">def</span> <span class="cn">_emit_summary</span>(self):
+        duration = time.time() - self.start_time
+        self.logger.info(<span class="cs">f"Scan complete in {duration:.1f}s — "</span>
+                         <span class="cs">f"{len(self.vulnerabilities)} findings"</span>)</pre>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Tags</div>
+          <div class="tag-row"><span class="tag">Refactor</span><span class="tag">Architecture</span><span class="tag">SRP</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="task-item">
+      <div class="task-summary" onclick="toggle(this)">
+        <div class="task-num" style="background:#fffbeb;color:#b7791f;">7</div>
+        <div class="task-info">
+          <div class="task-name">Pytest suite with respx HTTP mocking</div>
+          <div class="task-desc">Tier 1: SSRF blocklist, deduplication, config validation. Tier 2: XSS/SQLi detection with mocked responses</div>
+          <div class="task-badges">
+            <span class="badge" style="background:#fffbeb;color:#b7791f;border-color:#fbd38d;">HIGH</span>
+            <span class="badge" style="background:#ebf8ff;color:#2b6cb0;border-color:#bee3f8;">Testing</span>
+          </div>
+        </div>
+        <div class="task-right">
+          <span class="effort-chip" style="background:#fff5f5;color:#c53030;">12 hrs</span>
+          <span class="prio-chip" style="background:#fffbeb;color:#b7791f;">high</span>
+          <svg class="chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 4l4 4-4 4"/></svg>
+        </div>
+      </div>
+      <div class="task-detail">
+        <div class="detail-section">
+          <div class="detail-label">What &amp; why</div>
+          <div class="detail-text">Zero tests means every refactor is a gamble. Prioritize by risk: SSRF validation and key mismatch tests first (highest regression cost), then mock-based HTTP tests for detection logic. Use <code>respx</code> which intercepts <code>httpx</code> calls at the transport layer — no network required in CI.</div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Implementation</div>
+          <pre class="code-block"><span class="cm"># tests/test_validation.py</span>
+<span class="ck">import</span> pytest
+<span class="ck">from</span> backend.vuln_scanner <span class="ck">import</span> ScanConfig, VulnerabilityScanner
+
+<span class="ck">def</span> <span class="cn">test_ssrf_rejects_rfc1918</span>():
+    config = ScanConfig(target_url=<span class="cs">"http://192.168.1.1"</span>, skip_auth_check=<span class="cv">True</span>)
+    scanner = VulnerabilityScanner.__new__(VulnerabilityScanner)
+    scanner.config = config
+    <span class="ck">with</span> pytest.raises(ValueError, match=<span class="cs">"blocked range"</span>):
+        scanner._validate_target()
+
+<span class="ck">def</span> <span class="cn">test_ssrf_rejects_metadata_endpoint</span>():
+    config = ScanConfig(target_url=<span class="cs">"http://169.254.169.254/latest/"</span>)
+    scanner = VulnerabilityScanner.__new__(VulnerabilityScanner)
+    scanner.config = config
+    <span class="ck">with</span> pytest.raises(ValueError):
+        scanner._validate_target()
+
+<span class="cm"># tests/test_xss.py</span>
+<span class="ck">import</span> respx, httpx, pytest
+
+@respx.mock
+@pytest.mark.asyncio
+<span class="ck">async def</span> <span class="cn">test_xss_detects_reflected_payload</span>(scanner_config):
+    payload = <span class="cs">"&lt;script&gt;alert('XSS')&lt;/script&gt;"</span>
+    respx.post(<span class="cs">"https://target.test/search"</span>).mock(
+        return_value=httpx.Response(<span class="cv">200</span>,
+            text=<span class="cs">f"&lt;html&gt;&lt;body&gt;Results: {payload}&lt;/body&gt;&lt;/html&gt;"</span>))
+
+    tester = AsyncVulnerabilityTester(scanner_config)
+    result = <span class="ck">await</span> tester.test_xss(mock_form, <span class="cs">"https://target.test/search"</span>)
+
+    <span class="ck">assert</span> result <span class="ck">is not None</span>
+    <span class="ck">assert</span> result.confidence == <span class="cs">"High"</span>
+    <span class="ck">assert</span> result.severity_level == <span class="cs">"High"</span></pre>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Tags</div>
+          <div class="tag-row"><span class="tag">Testing</span><span class="tag">pytest</span><span class="tag">respx</span><span class="tag">asyncio</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="task-item">
+      <div class="task-summary" onclick="toggle(this)">
+        <div class="task-num" style="background:#fffbeb;color:#b7791f;">8</div>
+        <div class="task-info">
+          <div class="task-name">GitHub Actions CI pipeline</div>
+          <div class="task-desc">ruff + bandit + pytest on backend; eslint + build on frontend — parallel jobs</div>
+          <div class="task-badges">
+            <span class="badge" style="background:#f7fafc;color:#718096;border-color:#e2e8f0;">MEDIUM</span>
+            <span class="badge" style="background:#e6fffa;color:#2c7a7b;border-color:#b2f5ea;">CI/CD</span>
+          </div>
+        </div>
+        <div class="task-right">
+          <span class="effort-chip" style="background:#fffbeb;color:#b7791f;">3 hrs</span>
+          <span class="prio-chip" style="background:#f7fafc;color:#718096;">medium</span>
+          <svg class="chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 4l4 4-4 4"/></svg>
+        </div>
+      </div>
+      <div class="task-detail">
+        <div class="detail-section">
+          <div class="detail-label">Implementation</div>
+          <pre class="code-block"><span class="cm"># .github/workflows/ci.yml</span>
+name: CI
+on: [push, pull_request]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7-alpine
+        ports: [<span class="cs">"6379:6379"</span>]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        <span class="ck">with</span>: {python-version: <span class="cs">"3.12"</span>}
+      - run: pip install -r backend/requirements.txt pytest respx pytest-asyncio pytest-cov
+      - run: ruff check backend/
+      - run: bandit -r backend/ -ll    <span class="cm"># security linter</span>
+      - run: pip-audit                  <span class="cm"># CVE check on installed packages</span>
+      - run: pytest backend/tests/ --cov=backend --cov-fail-under=70
+        env:
+          SENTINAL_API_KEY: test-key-ci
+          REDIS_URL: redis://localhost:6379
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        <span class="ck">with</span>: {node-version: <span class="cs">"20"</span>}
+      - run: cd frontend && npm ci
+      - run: cd frontend && npm run lint
+      - run: cd frontend && npm audit --audit-level=high
+      - run: cd frontend && npm run build</pre>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Tags</div>
+          <div class="tag-row"><span class="tag">CI/CD</span><span class="tag">GitHub Actions</span><span class="tag">Security</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div><!-- /phase 2 card -->
+
+
+<!-- ═══════════════════════════════════ PHASE 3 ═══════════════════════════════════ -->
+<div id="phase3" class="section-header">
+  <div class="section-icon" style="background:#e6fffa;color:#2c7a7b;border:1px solid #b2f5ea;">3</div>
+  <div>
+    <h2>Phase 3 — Advanced features</h2>
+    <p class="text-muted" style="margin-top:2px">Weeks 8–14 &nbsp;·&nbsp; ~100 hrs &nbsp;·&nbsp; Celery job queues, Playwright browser crawler, AI triage, PostgreSQL scan history, SSE streaming, GitHub Actions integration</p>
+  </div>
+</div>
+
+<div class="phase-card">
+  <div class="phase-header">
+    <div class="phase-label">
+      <div class="phase-dot" style="background:#1D9E75;"></div>
+      <div>
+        <div class="phase-title">Advanced features</div>
+        <div class="phase-subtitle">Production-scale background jobs, JavaScript-rendered target support, AI-powered remediation, scan regression detection</div>
+      </div>
+    </div>
+    <div class="phase-stats">
+      <div class="stat-box"><div class="stat-num">8</div><div class="stat-label">Tasks</div></div>
+      <div class="stat-box"><div class="stat-num">~100h</div><div class="stat-label">Effort</div></div>
+    </div>
+  </div>
+  <div class="tasks-list">
+
+    <div class="task-item">
+      <div class="task-summary" onclick="toggle(this)">
+        <div class="task-num" style="background:#e6fffa;color:#2c7a7b;">1</div>
+        <div class="task-info">
+          <div class="task-name">Celery async job queue</div>
+          <div class="task-desc">Decouple HTTP layer from scan compute — API returns scan_id immediately</div>
+          <div class="task-badges">
+            <span class="badge" style="background:#fff5f5;color:#c53030;border-color:#fed7d7;">CRITICAL</span>
+            <span class="badge" style="background:#faf5ff;color:#6b46c1;border-color:#e9d8fd;">Architecture</span>
+          </div>
+        </div>
+        <div class="task-right">
+          <span class="effort-chip" style="background:#fff5f5;color:#c53030;">10 hrs</span>
+          <span class="prio-chip" style="background:#fff5f5;color:#c53030;">critical</span>
+          <svg class="chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 4l4 4-4 4"/></svg>
+        </div>
+      </div>
+      <div class="task-detail">
+        <div class="detail-section">
+          <div class="detail-label">What &amp; why</div>
+          <div class="detail-text">With Celery, <code>POST /scan/start</code> returns a scan_id in &lt;50ms and a worker picks up the task asynchronously. Horizontal worker scaling becomes trivial — add more containers. Built-in retry, task result TTL, and rate limiting per queue are included.</div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Implementation</div>
+          <pre class="code-block"><span class="cm"># backend/tasks.py</span>
+<span class="ck">from</span> celery <span class="ck">import</span> Celery
+<span class="ck">import</span> asyncio, os
+
+celery = Celery(<span class="cs">"sentinal"</span>,
+    broker=os.environ[<span class="cs">"REDIS_URL"</span>],
+    backend=os.environ[<span class="cs">"REDIS_URL"</span>])
+
+celery.conf.update(
+    task_serializer=<span class="cs">"json"</span>,
+    result_expires=<span class="cv">86400</span>,
+    worker_max_tasks_per_child=<span class="cv">10</span>,   <span class="cm"># prevent memory leaks</span>
+    task_acks_late=<span class="cv">True</span>,              <span class="cm"># only ack after completion</span>
+)
+
+@celery.task(bind=<span class="cv">True</span>, max_retries=<span class="cv">0</span>)
+<span class="ck">def</span> <span class="cn">run_scan_task</span>(self, scan_id: str, config_dict: dict):
+    loop = asyncio.new_event_loop()
+    <span class="ck">try</span>:
+        config = ScanConfig(**config_dict)
+        scanner = VulnerabilityScanner(
+            config,
+            logger=RedisPublishLogger(scan_id)
+        )
+        vulns = loop.run_until_complete(scanner.scan())
+        loop.run_until_complete(store.save_results(scan_id, vulns))
+        loop.run_until_complete(store.set_status(scan_id, <span class="cs">"complete"</span>))
+    <span class="ck">except</span> Exception <span class="ck">as</span> e:
+        loop.run_until_complete(store.set_status(scan_id, <span class="cs">"failed"</span>, str(e)))
+    <span class="ck">finally</span>:
+        loop.close()
+
+<span class="cm"># api.py — non-blocking endpoint</span>
+@app.post(<span class="cs">"/scan/start"</span>)
+<span class="ck">async def</span> <span class="cn">start_scan</span>(request: ScanRequest):
+    scan_id = str(uuid4())
+    <span class="ck">await</span> store.set_status(scan_id, <span class="cs">"queued"</span>)
+    run_scan_task.delay(scan_id, request.model_dump())
+    <span class="ck">return</span> {<span class="cs">"scan_id"</span>: scan_id, <span class="cs">"status"</span>: <span class="cs">"queued"</span>}</pre>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Tags</div>
+          <div class="tag-row"><span class="tag">Celery</span><span class="tag">Redis</span><span class="tag">Architecture</span><span class="tag">Scalability</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="task-item">
+      <div class="task-summary" onclick="toggle(this)">
+        <div class="task-num" style="background:#e6fffa;color:#2c7a7b;">2</div>
+        <div class="task-info">
+          <div class="task-name">Playwright headless browser crawler</div>
+          <div class="task-desc">Discover JS-rendered content invisible to the static HTML crawler</div>
+          <div class="task-badges">
+            <span class="badge" style="background:#fffbeb;color:#b7791f;border-color:#fbd38d;">HIGH</span>
+            <span class="badge" style="background:#fff5f0;color:#c05621;border-color:#fed7aa;">Playwright</span>
+          </div>
+        </div>
+        <div class="task-right">
+          <span class="effort-chip" style="background:#fff5f5;color:#c53030;">12 hrs</span>
+          <span class="prio-chip" style="background:#fffbeb;color:#b7791f;">high</span>
+          <svg class="chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 4l4 4-4 4"/></svg>
+        </div>
+      </div>
+      <div class="task-detail">
+        <div class="detail-section">
+          <div class="detail-label">What &amp; why</div>
+          <div class="detail-text">The current crawler parses static HTML only. React, Vue, and Angular SPAs — which now represent the majority of modern web apps — are effectively invisible. Playwright executes JavaScript, waits for network idle, and returns the fully-rendered DOM. Add as an opt-in flag so simple targets don't pay the startup cost.</div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Implementation</div>
+          <pre class="code-block"><span class="cm"># backend/playwright_crawler.py</span>
+<span class="ck">from</span> playwright.async_api <span class="ck">import</span> async_playwright
+
+<span class="ck">class</span> <span class="cn">PlaywrightCrawler</span>(AsyncWebCrawler):
+    <span class="ck">async def</span> <span class="cn">crawl_page</span>(self, url: str):
+        <span class="ck">async with</span> async_playwright() <span class="ck">as</span> pw:
+            browser = <span class="ck">await</span> pw.chromium.launch(headless=<span class="cv">True</span>)
+            ctx = <span class="ck">await</span> browser.new_context(
+                user_agent=self.config.user_agent,
+                ignore_https_errors=<span class="ck">not</span> self.config.verify_ssl
+            )
+            page = <span class="ck">await</span> ctx.new_page()
+            <span class="cm"># Block images/fonts for speed</span>
+            <span class="ck">await</span> page.route(<span class="cs">"**/*.{png,jpg,gif,woff2,svg,mp4}"</span>,
+                             <span class="ck">lambda</span> r: r.abort())
+            <span class="ck">await</span> page.goto(url,
+                wait_until=<span class="cs">"networkidle"</span>,
+                timeout=self.config.timeout * <span class="cv">1000</span>)
+            html = <span class="ck">await</span> page.content()
+            links = self._extract_links(url, html)
+            <span class="ck">await</span> browser.close()
+        <span class="ck">return</span> url, links, html, <span class="cv">True</span>
+
+<span class="cm"># ScanConfig — new field</span>
+use_browser: bool = <span class="cv">False</span>
+
+<span class="cm"># Crawler factory</span>
+<span class="ck">def</span> <span class="cn">make_crawler</span>(config, logger):
+    <span class="ck">return</span> PlaywrightCrawler(config, logger) <span class="ck">if</span> config.use_browser \
+           <span class="ck">else</span> AsyncWebCrawler(config, logger)</pre>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Tags</div>
+          <div class="tag-row"><span class="tag">Playwright</span><span class="tag">JavaScript</span><span class="tag">Crawler</span><span class="tag">SPA</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="task-item">
+      <div class="task-summary" onclick="toggle(this)">
+        <div class="task-num" style="background:#e6fffa;color:#2c7a7b;">3</div>
+        <div class="task-info">
+          <div class="task-name">AI triage — severity re-scoring + fix snippets</div>
+          <div class="task-desc">Claude API enriches each finding with exploitability context and a language-specific code fix</div>
+          <div class="task-badges">
+            <span class="badge" style="background:#fffbeb;color:#b7791f;border-color:#fbd38d;">HIGH</span>
+            <span class="badge" style="background:#faf5ff;color:#6b46c1;border-color:#e9d8fd;">AI</span>
+          </div>
+        </div>
+        <div class="task-right">
+          <span class="effort-chip" style="background:#fff5f5;color:#c53030;">10 hrs</span>
+          <span class="prio-chip" style="background:#fffbeb;color:#b7791f;">high</span>
+          <svg class="chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 4l4 4-4 4"/></svg>
+        </div>
+      </div>
+      <div class="task-detail">
+        <div class="detail-section">
+          <div class="detail-label">What &amp; why</div>
+          <div class="detail-text">Generic scanner output tells developers there is a problem but not how to fix it in their specific codebase. After scan completion, batch findings through the Anthropic API. Claude re-scores severity in context, explains real-world exploitability in one sentence, and generates a copy-pasteable code fix with language detected from the URL path. This is the primary commercial differentiator.</div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Implementation</div>
+          <pre class="code-block"><span class="cm"># backend/ai_triage.py</span>
+<span class="ck">import</span> anthropic, json, asyncio
+
+_client = anthropic.AsyncAnthropic()
+
+<span class="cv">TRIAGE_PROMPT</span> = <span class="cs">"""You are a senior security engineer.
+Given this finding, respond with ONLY a JSON object:
+{{
+  "adjusted_severity": "Critical"|"High"|"Medium"|"Low",
+  "exploitability": "one sentence, max 20 words",
+  "code_fix": "minimal code snippet, detected language from URL",
+  "confidence_note": "why severity was adjusted or kept"
+}}
+
+Finding:
+Type: {vuln_type}
+URL: {url}
+Description: {description}
+Evidence: {evidence}
+Current severity: {severity_level}"""</span>
+
+<span class="ck">async def</span> <span class="cn">triage_finding</span>(vuln: Vulnerability) -> dict:
+    msg = <span class="ck">await</span> _client.messages.create(
+        model=<span class="cs">"claude-sonnet-4-20250514"</span>,
+        max_tokens=<span class="cv">500</span>,
+        messages=[{<span class="cs">"role"</span>:<span class="cs">"user"</span>, <span class="cs">"content"</span>:
+            TRIAGE_PROMPT.format(**vuln.to_dict())}]
+    )
+    <span class="ck">return</span> json.loads(msg.content[<span class="cv">0</span>].text)
+
+<span class="ck">async def</span> <span class="cn">triage_all</span>(vulns: list[Vulnerability],
+                      concurrency: int = <span class="cv">5</span>) -> list[dict]:
+    sem = asyncio.Semaphore(concurrency)
+    <span class="ck">async def</span> <span class="cn">_guarded</span>(v):
+        <span class="ck">async with</span> sem: <span class="ck">return await</span> triage_finding(v)
+    <span class="ck">return await</span> asyncio.gather(*[_guarded(v) <span class="ck">for</span> v <span class="ck">in</span> vulns],
+                                return_exceptions=<span class="cv">True</span>)</pre>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Tags</div>
+          <div class="tag-row"><span class="tag">AI</span><span class="tag">Anthropic</span><span class="tag">Claude</span><span class="tag">Python</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="task-item">
+      <div class="task-summary" onclick="toggle(this)">
+        <div class="task-num" style="background:#e6fffa;color:#2c7a7b;">4</div>
+        <div class="task-info">
+          <div class="task-name">PostgreSQL scan history + diff engine</div>
+          <div class="task-desc">Detect new vulnerabilities across scans — the key CI/CD integration feature</div>
+          <div class="task-badges">
+            <span class="badge" style="background:#fffbeb;color:#b7791f;border-color:#fbd38d;">HIGH</span>
+            <span class="badge" style="background:#ebf8ff;color:#2b6cb0;border-color:#bee3f8;">Postgres</span>
+          </div>
+        </div>
+        <div class="task-right">
+          <span class="effort-chip" style="background:#fff5f5;color:#c53030;">10 hrs</span>
+          <span class="prio-chip" style="background:#fffbeb;color:#b7791f;">high</span>
+          <svg class="chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 4l4 4-4 4"/></svg>
+        </div>
+      </div>
+      <div class="task-detail">
+        <div class="detail-section">
+          <div class="detail-label">What &amp; why</div>
+          <div class="detail-text">Teams care far more about regressions than a stable list of known issues. The diff engine compares two scans for the same target by fingerprinting each finding as <code>md5(vuln_type || url || description)</code>. Only fingerprints present in the new scan but absent from the baseline are surfaced as new findings. This is what makes the GitHub Actions integration actually useful.</div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Implementation</div>
+          <pre class="code-block"><span class="cm">-- migrations/001_create_scans.sql</span>
+CREATE TABLE scans (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    target_url TEXT NOT NULL,
+    started_at TIMESTAMPTZ DEFAULT now(),
+    completed_at TIMESTAMPTZ,
+    status TEXT NOT NULL DEFAULT <span class="cs">'queued'</span>,
+    config JSONB,
+    user_id UUID    <span class="cm">-- populated in Phase 4</span>
+);
+
+CREATE TABLE findings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    scan_id UUID REFERENCES scans(id) ON DELETE CASCADE,
+    vuln_type TEXT NOT NULL,
+    url TEXT NOT NULL,
+    description TEXT,
+    severity_level TEXT NOT NULL,
+    severity_score FLOAT,
+    evidence TEXT,
+    remediation TEXT,
+    confidence TEXT,
+    fingerprint TEXT GENERATED ALWAYS AS (
+        md5(vuln_type || <span class="cs">'|'</span> || url || <span class="cs">'|'</span> || description)
+    ) STORED
+);
+
+CREATE INDEX idx_findings_fp ON findings(fingerprint);
+CREATE INDEX idx_scans_target ON scans(target_url, started_at DESC);
+
+<span class="cm">-- Diff query: new findings in scan B not in scan A</span>
+SELECT f2.*
+FROM findings f2
+WHERE f2.scan_id = :new_scan_id
+  AND f2.fingerprint NOT IN (
+    SELECT fingerprint FROM findings
+    WHERE scan_id = :baseline_scan_id
+  )
+ORDER BY
+  CASE f2.severity_level
+    WHEN <span class="cs">'Critical'</span> THEN 1 WHEN <span class="cs">'High'</span> THEN 2
+    WHEN <span class="cs">'Medium'</span> THEN 3 ELSE 4 END;</pre>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Tags</div>
+          <div class="tag-row"><span class="tag">PostgreSQL</span><span class="tag">Diff</span><span class="tag">CI/CD</span><span class="tag">History</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="task-item">
+      <div class="task-summary" onclick="toggle(this)">
+        <div class="task-num" style="background:#e6fffa;color:#2c7a7b;">5</div>
+        <div class="task-info">
+          <div class="task-name">GitHub Actions scan integration</div>
+          <div class="task-desc">Publish sentinalscan/scan-action — fail PRs on new High/Critical findings</div>
+          <div class="task-badges">
+            <span class="badge" style="background:#f7fafc;color:#718096;border-color:#e2e8f0;">MEDIUM</span>
+            <span class="badge" style="background:#e6fffa;color:#2c7a7b;border-color:#b2f5ea;">CI/CD</span>
+          </div>
+        </div>
+        <div class="task-right">
+          <span class="effort-chip" style="background:#fffbeb;color:#b7791f;">8 hrs</span>
+          <span class="prio-chip" style="background:#f7fafc;color:#718096;">medium</span>
+          <svg class="chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 4l4 4-4 4"/></svg>
+        </div>
+      </div>
+      <div class="task-detail">
+        <div class="detail-section">
+          <div class="detail-label">Implementation</div>
+          <pre class="code-block"><span class="cm"># .github/actions/sentinalscan/action.yml</span>
+name: SentinalScan
+description: Run a vulnerability scan and fail on new findings
+inputs:
+  target_url: {required: true}
+  api_key:    {required: true}
+  api_base:   {default: <span class="cs">"http://localhost:8000"</span>}
+  fail_on:    {default: <span class="cs">"high"</span>}
+  baseline_scan_id: {description: <span class="cs">"Compare against this scan ID"</span>}
+
+runs:
+  using: composite
+  steps:
+    - name: Start scan
+      id: scan
+      shell: bash
+      run: |
+        RESP=$(curl -sf -X POST <span class="cs">"${{ inputs.api_base }}/scan/start"</span> \
+          -H <span class="cs">"X-API-Key: ${{ inputs.api_key }}"</span> \
+          -H <span class="cs">"Content-Type: application/json"</span> \
+          -d <span class="cs">'{"target_url":"${{ inputs.target_url }}"}'</span>)
+        echo <span class="cs">"scan_id=$(echo $RESP | jq -r .scan_id)"</span> >> $GITHUB_OUTPUT
+
+    - name: Wait and evaluate
+      shell: bash
+      run: |
+        python3 ${{ github.action_path }}/poll_and_fail.py \
+          --api-base <span class="cs">"${{ inputs.api_base }}"</span>      \
+          --api-key  <span class="cs">"${{ inputs.api_key }}"</span>       \
+          --scan-id  <span class="cs">"${{ steps.scan.outputs.scan_id }}"</span> \
+          --fail-on  <span class="cs">"${{ inputs.fail_on }}"</span>        \
+          --baseline <span class="cs">"${{ inputs.baseline_scan_id }}"</span></pre>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Tags</div>
+          <div class="tag-row"><span class="tag">GitHub Actions</span><span class="tag">CI/CD</span><span class="tag">Integration</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="task-item">
+      <div class="task-summary" onclick="toggle(this)">
+        <div class="task-num" style="background:#e6fffa;color:#2c7a7b;">6</div>
+        <div class="task-info">
+          <div class="task-name">Replace BeautifulSoup with selectolax</div>
+          <div class="task-desc">5–10× faster link extraction via C-backed Modest parser</div>
+          <div class="task-badges">
+            <span class="badge" style="background:#f7fafc;color:#718096;border-color:#e2e8f0;">MEDIUM</span>
+            <span class="badge" style="background:#f0fff4;color:#276749;border-color:#c6f6d5;">Performance</span>
+          </div>
+        </div>
+        <div class="task-right">
+          <span class="effort-chip" style="background:#fffbeb;color:#b7791f;">4 hrs</span>
+          <span class="prio-chip" style="background:#f7fafc;color:#718096;">medium</span>
+          <svg class="chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 4l4 4-4 4"/></svg>
+        </div>
+      </div>
+      <div class="task-detail">
+        <div class="detail-section">
+          <div class="detail-label">Implementation</div>
+          <pre class="code-block"><span class="ck">from</span> selectolax.parser <span class="ck">import</span> HTMLParser
+
+<span class="ck">def</span> <span class="cn">_extract_links</span>(self, url: str, html: str) -> set[str]:
+    <span class="cs">"""5-10x faster than BeautifulSoup for link extraction."""</span>
+    tree = HTMLParser(html)
+    links = set()
+    <span class="ck">for</span> node <span class="ck">in</span> tree.css(<span class="cs">"a[href], form[action]"</span>):
+        href = (node.attributes.get(<span class="cs">"href"</span>) <span class="ck">or</span>
+                node.attributes.get(<span class="cs">"action"</span>, <span class="cs">""</span>))
+        <span class="ck">if</span> href <span class="ck">and</span> self._is_valid_link(url, href):
+            full = urljoin(url, href).split(<span class="cs">"#"</span>)[<span class="cv">0</span>]
+            links.add(full)
+    <span class="ck">return</span> links
+
+<span class="cm"># Keep bs4 ONLY for complex form field traversal</span>
+<span class="ck">def</span> <span class="cn">_extract_forms</span>(self, url: str, html: str):
+    <span class="ck">from</span> bs4 <span class="ck">import</span> BeautifulSoup
+    soup = BeautifulSoup(html, <span class="cs">"html.parser"</span>)
+    <span class="ck">return</span> soup.find_all(<span class="cs">"form"</span>)</pre>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Tags</div>
+          <div class="tag-row"><span class="tag">Performance</span><span class="tag">selectolax</span><span class="tag">HTML parsing</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="task-item">
+      <div class="task-summary" onclick="toggle(this)">
+        <div class="task-num" style="background:#e6fffa;color:#2c7a7b;">7</div>
+        <div class="task-info">
+          <div class="task-name">Server-Sent Events for partial results</div>
+          <div class="task-desc">Stream findings to the frontend as each page is tested — no more waiting</div>
+          <div class="task-badges">
+            <span class="badge" style="background:#f7fafc;color:#718096;border-color:#e2e8f0;">MEDIUM</span>
+            <span class="badge" style="background:#ebf8ff;color:#2b6cb0;border-color:#bee3f8;">UX</span>
+          </div>
+        </div>
+        <div class="task-right">
+          <span class="effort-chip" style="background:#fffbeb;color:#b7791f;">6 hrs</span>
+          <span class="prio-chip" style="background:#f7fafc;color:#718096;">medium</span>
+          <svg class="chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 4l4 4-4 4"/></svg>
+        </div>
+      </div>
+      <div class="task-detail">
+        <div class="detail-section">
+          <div class="detail-label">Implementation</div>
+          <pre class="code-block"><span class="cm"># api.py — SSE endpoint for streaming results</span>
+<span class="ck">from</span> fastapi.responses <span class="ck">import</span> StreamingResponse
+
+@app.get(<span class="cs">"/scan/{scan_id}/stream"</span>)
+<span class="ck">async def</span> <span class="cn">stream_results</span>(scan_id: str):
+    <span class="ck">async def</span> <span class="cn">generator</span>():
+        last_len = <span class="cv">0</span>
+        <span class="ck">while True</span>:
+            results = <span class="ck">await</span> store.get_results(scan_id)
+            <span class="ck">for</span> r <span class="ck">in</span> results[last_len:]:
+                <span class="ck">yield</span> <span class="cs">f"event: finding\ndata: {json.dumps(r)}\n\n"</span>
+            last_len = len(results)
+            status = <span class="ck">await</span> store.get_status(scan_id)
+            <span class="ck">if</span> status <span class="ck">in</span> (<span class="cs">"complete"</span>, <span class="cs">"failed"</span>):
+                <span class="ck">yield</span> <span class="cs">f"event: done\ndata: {status}\n\n"</span>
+                <span class="ck">break</span>
+            <span class="ck">await</span> asyncio.sleep(<span class="cv">0.5</span>)
+
+    <span class="ck">return</span> StreamingResponse(generator(),
+        media_type=<span class="cs">"text/event-stream"</span>,
+        headers={<span class="cs">"Cache-Control"</span>:<span class="cs">"no-cache"</span>,
+                 <span class="cs">"X-Accel-Buffering"</span>:<span class="cs">"no"</span>})
+
+<span class="cm">// frontend — replace polling with EventSource</span>
+<span class="ck">const</span> es = <span class="ck">new</span> EventSource(<span class="cs">`/scan/${scanId}/stream`</span>);
+es.addEventListener(<span class="cs">"finding"</span>, e => {
+    <span class="ck">const</span> finding = JSON.parse(e.data);
+    setResults(prev => [...prev, finding]);
+});
+es.addEventListener(<span class="cs">"done"</span>, () => {
+    es.close(); setIsScanning(<span class="cv">false</span>);
+});</pre>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Tags</div>
+          <div class="tag-row"><span class="tag">SSE</span><span class="tag">Frontend</span><span class="tag">Real-time</span><span class="tag">UX</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="task-item">
+      <div class="task-summary" onclick="toggle(this)">
+        <div class="task-num" style="background:#e6fffa;color:#2c7a7b;">8</div>
+        <div class="task-info">
+          <div class="task-name">structlog structured logging</div>
+          <div class="task-desc">JSON logs with bound scan_id context — drop-in for ELK, Datadog, CloudWatch</div>
+          <div class="task-badges">
+            <span class="badge" style="background:#f0fff4;color:#276749;border-color:#c6f6d5;">LOW</span>
+            <span class="badge" style="background:#e6fffa;color:#2c7a7b;border-color:#b2f5ea;">Observability</span>
+          </div>
+        </div>
+        <div class="task-right">
+          <span class="effort-chip" style="background:#f0fff4;color:#276749;">3 hrs</span>
+          <span class="prio-chip" style="background:#f0fff4;color:#276749;">low</span>
+          <svg class="chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 4l4 4-4 4"/></svg>
+        </div>
+      </div>
+      <div class="task-detail">
+        <div class="detail-section">
+          <div class="detail-label">Implementation</div>
+          <pre class="code-block"><span class="cm"># backend/logging_config.py</span>
+<span class="ck">import</span> structlog
+
+structlog.configure(
+    processors=[
+        structlog.contextvars.merge_contextvars,
+        structlog.processors.add_log_level,
+        structlog.processors.TimeStamper(fmt=<span class="cs">"iso"</span>),
+        structlog.processors.JSONRenderer(),
+    ],
+    logger_factory=structlog.PrintLoggerFactory(),
+)
+
+<span class="cm"># In Celery task — bind context once per scan</span>
+structlog.contextvars.clear_contextvars()
+structlog.contextvars.bind_contextvars(
+    scan_id=scan_id,
+    target=config.target_url,
+    worker=os.getenv(<span class="cs">"HOSTNAME"</span>, <span class="cs">"local"</span>)
+)
+log = structlog.get_logger()
+log.info(<span class="cs">"phase_start"</span>, phase=<span class="cs">"crawl"</span>)
+log.warning(<span class="cs">"rate_limited"</span>, url=url, backoff_s=<span class="cv">2</span>)
+
+<span class="cm"># Output (JSON, auto-parseable by ELK/Datadog):</span>
+<span class="cm"># {"event":"phase_start","phase":"crawl","scan_id":"abc-123",</span>
+<span class="cm">#  "target":"https://example.com","level":"info","timestamp":"..."}</span></pre>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Tags</div>
+          <div class="tag-row"><span class="tag">structlog</span><span class="tag">Observability</span><span class="tag">DevOps</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div><!-- /phase 3 -->
+
+
+<!-- ═══════════════════════════════════ PHASE 4 ═══════════════════════════════════ -->
+<div id="phase4" class="section-header">
+  <div class="section-icon" style="background:#faf5ff;color:#6b46c1;border:1px solid #e9d8fd;">4</div>
+  <div>
+    <h2>Phase 4 — Product layer</h2>
+    <p class="text-muted" style="margin-top:2px">Weeks 15–22 &nbsp;·&nbsp; ~120 hrs &nbsp;·&nbsp; JWT multi-user auth, RBAC, AI-powered PDF reports, Kubernetes Helm chart, Stripe billing, compliance mapping</p>
+  </div>
+</div>
+
+<div class="phase-card">
+  <div class="phase-header">
+    <div class="phase-label">
+      <div class="phase-dot" style="background:#7F77DD;"></div>
+      <div>
+        <div class="phase-title">Product layer</div>
+        <div class="phase-subtitle">Turns the scanner into a multi-user SaaS with premium AI reports, team collaboration, and production-grade Kubernetes deployment</div>
+      </div>
+    </div>
+    <div class="phase-stats">
+      <div class="stat-box"><div class="stat-num">8</div><div class="stat-label">Tasks</div></div>
+      <div class="stat-box"><div class="stat-num">~120h</div><div class="stat-label">Effort</div></div>
+    </div>
+  </div>
+  <div class="tasks-list">
+
+    <div class="task-item">
+      <div class="task-summary" onclick="toggle(this)">
+        <div class="task-num" style="background:#faf5ff;color:#6b46c1;">1</div>
+        <div class="task-info">
+          <div class="task-name">JWT multi-user authentication</div>
+          <div class="task-desc">fastapi-users: register, login, scan ownership, per-user history</div>
+          <div class="task-badges">
+            <span class="badge" style="background:#fff5f5;color:#c53030;border-color:#fed7d7;">CRITICAL</span>
+            <span class="badge" style="background:#faf5ff;color:#6b46c1;border-color:#e9d8fd;">Auth</span>
+          </div>
+        </div>
+        <div class="task-right">
+          <span class="effort-chip" style="background:#fff5f5;color:#c53030;">14 hrs</span>
+          <span class="prio-chip" style="background:#fff5f5;color:#c53030;">critical</span>
+          <svg class="chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 4l4 4-4 4"/></svg>
+        </div>
+      </div>
+      <div class="task-detail">
+        <div class="detail-section">
+          <div class="detail-label">Implementation</div>
+          <pre class="code-block"><span class="cm"># pip install fastapi-users[sqlalchemy]</span>
+<span class="ck">from</span> fastapi_users <span class="ck">import</span> FastAPIUsers
+<span class="ck">from</span> fastapi_users.authentication <span class="ck">import</span> (
+    JWTStrategy, AuthenticationBackend, BearerTransport)
+
+<span class="ck">def</span> <span class="cn">get_jwt_strategy</span>() -> JWTStrategy:
+    <span class="ck">return</span> JWTStrategy(
+        secret=os.environ[<span class="cs">"JWT_SECRET"</span>],
+        lifetime_seconds=<span class="cv">3600</span> * <span class="cv">24</span> * <span class="cv">7</span>  <span class="cm"># 7 days</span>
+    )
+
+auth_backend = AuthenticationBackend(
+    name=<span class="cs">"jwt"</span>,
+    transport=BearerTransport(tokenUrl=<span class="cs">"auth/jwt/login"</span>),
+    get_strategy=get_jwt_strategy,
+)
+
+<span class="cm"># Add user_id FK to scans table</span>
+ALTER TABLE scans
+  ADD COLUMN user_id UUID REFERENCES users(id) ON DELETE CASCADE;
+
+<span class="cm"># Enforce ownership on every scan endpoint</span>
+@app.get(<span class="cs">"/scan/{scan_id}/results"</span>)
+<span class="ck">async def</span> <span class="cn">get_results</span>(
+    scan_id: str,
+    user: User = Depends(current_active_user)
+):
+    scan = <span class="ck">await</span> db.get_scan(scan_id)
+    <span class="ck">if</span> str(scan.user_id) != str(user.id):
+        <span class="ck">raise</span> HTTPException(<span class="cv">403</span>, <span class="cs">"Not authorized to view this scan"</span>)
+    <span class="ck">return await</span> store.get_results(scan_id)</pre>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Tags</div>
+          <div class="tag-row"><span class="tag">Auth</span><span class="tag">JWT</span><span class="tag">fastapi-users</span><span class="tag">PostgreSQL</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="task-item">
+      <div class="task-summary" onclick="toggle(this)">
+        <div class="task-num" style="background:#faf5ff;color:#6b46c1;">2</div>
+        <div class="task-info">
+          <div class="task-name">Role-based access control</div>
+          <div class="task-desc">Owner / analyst / viewer roles per team — shared scan visibility</div>
+          <div class="task-badges">
+            <span class="badge" style="background:#fffbeb;color:#b7791f;border-color:#fbd38d;">HIGH</span>
+            <span class="badge" style="background:#faf5ff;color:#6b46c1;border-color:#e9d8fd;">RBAC</span>
+          </div>
+        </div>
+        <div class="task-right">
+          <span class="effort-chip" style="background:#fffbeb;color:#b7791f;">8 hrs</span>
+          <span class="prio-chip" style="background:#fffbeb;color:#b7791f;">high</span>
+          <svg class="chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 4l4 4-4 4"/></svg>
+        </div>
+      </div>
+      <div class="task-detail">
+        <div class="detail-section">
+          <div class="detail-label">Implementation</div>
+          <pre class="code-block"><span class="cm">-- RBAC schema</span>
+CREATE TABLE teams (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL UNIQUE,
+    owner_id UUID REFERENCES users(id)
+);
+CREATE TABLE team_members (
+    team_id UUID REFERENCES teams(id),
+    user_id UUID REFERENCES users(id),
+    role TEXT CHECK (role IN (<span class="cs">'owner'</span>,<span class="cs">'analyst'</span>,<span class="cs">'viewer'</span>)),
+    PRIMARY KEY (team_id, user_id)
+);
+
+<span class="cm"># FastAPI permission dependency</span>
+<span class="ck">def</span> <span class="cn">require_role</span>(*roles: str):
+    <span class="ck">async def</span> <span class="cn">checker</span>(
+        team_id: str,
+        user: User = Depends(current_active_user)
+    ):
+        m = <span class="ck">await</span> db.get_membership(team_id, user.id)
+        <span class="ck">if not</span> m <span class="ck">or</span> m.role <span class="ck">not in</span> roles:
+            <span class="ck">raise</span> HTTPException(<span class="cv">403</span>, <span class="cs">"Insufficient permissions"</span>)
+        <span class="ck">return</span> m
+    <span class="ck">return</span> checker
+
+@app.post(<span class="cs">"/scan/start"</span>,
+    dependencies=[Depends(require_role(<span class="cs">"owner"</span>, <span class="cs">"analyst"</span>))])
+<span class="ck">async def</span> <span class="cn">start_scan</span>(...): ...
+
+@app.get(<span class="cs">"/scan/{id}/results"</span>,
+    dependencies=[Depends(require_role(<span class="cs">"owner"</span>,<span class="cs">"analyst"</span>,<span class="cs">"viewer"</span>))])
+<span class="ck">async def</span> <span class="cn">get_results</span>(...): ...</pre>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Tags</div>
+          <div class="tag-row"><span class="tag">RBAC</span><span class="tag">Teams</span><span class="tag">PostgreSQL</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="task-item">
+      <div class="task-summary" onclick="toggle(this)">
+        <div class="task-num" style="background:#faf5ff;color:#6b46c1;">3</div>
+        <div class="task-info">
+          <div class="task-name">AI-powered PDF remediation report</div>
+          <div class="task-desc">Jinja2 + WeasyPrint — per-finding fix in the target app's language, CVSS scores</div>
+          <div class="task-badges">
+            <span class="badge" style="background:#fffbeb;color:#b7791f;border-color:#fbd38d;">HIGH</span>
+            <span class="badge" style="background:#faf5ff;color:#6b46c1;border-color:#e9d8fd;">AI</span>
+          </div>
+        </div>
+        <div class="task-right">
+          <span class="effort-chip" style="background:#fff5f5;color:#c53030;">16 hrs</span>
+          <span class="prio-chip" style="background:#fffbeb;color:#b7791f;">high</span>
+          <svg class="chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 4l4 4-4 4"/></svg>
+        </div>
+      </div>
+      <div class="task-detail">
+        <div class="detail-section">
+          <div class="detail-label">What &amp; why</div>
+          <div class="detail-text">The flagship commercial feature. Each finding section reads as if a senior security engineer wrote it: business impact, step-by-step reproduction, CVSS 3.1 vector, and a copy-pasteable code fix in the language detected from the URL path. This is the premium tier differentiator — free users get raw findings, paid users get the PDF.</div>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Implementation</div>
+          <pre class="code-block"><span class="cm"># backend/report_ai.py</span>
+<span class="ck">from</span> weasyprint <span class="ck">import</span> HTML
+<span class="ck">from</span> jinja2 <span class="ck">import</span> Environment, PackageLoader
+
+<span class="cv">REPORT_SYSTEM</span> = <span class="cs">"""You are a security engineer writing a
+penetration test report for a development team.
+Be direct, technical, and constructive. One sentence per idea."""</span>
+
+<span class="ck">async def</span> <span class="cn">generate_finding_section</span>(
+        vuln: Vulnerability, triage: dict) -> str:
+    lang = _detect_language(vuln.url)
+    prompt = <span class="cs">f"""Write a finding section. Include:
+- Business impact (1 sentence)
+- Step-by-step reproduction (numbered list)
+- CVSS 3.1 vector and score
+- Code fix in {lang}
+Max 400 words. Format: Markdown.
+
+Finding: {json.dumps(vuln.to_dict())}
+AI triage: {json.dumps(triage)}"""</span>
+    msg = <span class="ck">await</span> _client.messages.create(
+        model=<span class="cs">"claude-sonnet-4-20250514"</span>,
+        max_tokens=<span class="cv">600</span>, system=REPORT_SYSTEM,
+        messages=[{<span class="cs">"role"</span>:<span class="cs">"user"</span>,<span class="cs">"content"</span>:prompt}])
+    <span class="ck">return</span> msg.content[<span class="cv">0</span>].text
+
+<span class="ck">async def</span> <span class="cn">generate_pdf_report</span>(scan_id: str) -> bytes:
+    results = <span class="ck">await</span> store.get_results(scan_id)
+    vulns = [Vulnerability(**r) <span class="ck">for</span> r <span class="ck">in</span> results]
+    triages = <span class="ck">await</span> triage_all(vulns)
+    sections = <span class="ck">await</span> asyncio.gather(*[
+        generate_finding_section(v, t)
+        <span class="ck">for</span> v, t <span class="ck">in zip</span>(vulns, triages)])
+    jinja_env = Environment(loader=PackageLoader(<span class="cs">"backend"</span>))
+    html_str = jinja_env.get_template(<span class="cs">"report.html.j2"</span>).render(
+        scan_id=scan_id, sections=sections, findings=results)
+    <span class="ck">return</span> HTML(string=html_str).write_pdf()</pre>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Tags</div>
+          <div class="tag-row"><span class="tag">AI</span><span class="tag">Anthropic</span><span class="tag">PDF</span><span class="tag">WeasyPrint</span><span class="tag">Jinja2</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="task-item">
+      <div class="task-summary" onclick="toggle(this)">
+        <div class="task-num" style="background:#faf5ff;color:#6b46c1;">4</div>
+        <div class="task-info">
+          <div class="task-name">Kubernetes Helm chart</div>
+          <div class="task-desc">HPA for Celery workers, PVC for Postgres, Ingress with TLS</div>
+          <div class="task-badges">
+            <span class="badge" style="background:#f7fafc;color:#718096;border-color:#e2e8f0;">MEDIUM</span>
+            <span class="badge" style="background:#e6fffa;color:#2c7a7b;border-color:#b2f5ea;">DevOps</span>
+          </div>
+        </div>
+        <div class="task-right">
+          <span class="effort-chip" style="background:#fff5f5;color:#c53030;">12 hrs</span>
+          <span class="prio-chip" style="background:#f7fafc;color:#718096;">medium</span>
+          <svg class="chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 4l4 4-4 4"/></svg>
+        </div>
+      </div>
+      <div class="task-detail">
+        <div class="detail-section">
+          <div class="detail-label">Implementation</div>
+          <pre class="code-block"><span class="cm"># helm/sentinalscan/values.yaml</span>
+api:
+  replicas: <span class="cv">2</span>
+  image: ghcr.io/yourorg/sentinalscan-api:latest
+  resources:
+    requests: {cpu: 250m, memory: 256Mi}
+    limits:   {cpu: 1000m, memory: 512Mi}
+
+worker:
+  replicas: <span class="cv">3</span>
+  autoscaling:
+    enabled: <span class="cv">true</span>
+    minReplicas: <span class="cv">1</span>
+    maxReplicas: <span class="cv">10</span>
+    targetCPUUtilizationPercentage: <span class="cv">70</span>
+
+redis:
+  enabled: <span class="cv">true</span>
+  architecture: standalone
+  auth.enabled: <span class="cv">true</span>
+
+postgresql:
+  enabled: <span class="cv">true</span>
+  primary.persistence.size: 20Gi
+
+ingress:
+  enabled: <span class="cv">true</span>
+  className: nginx
+  hosts:
+    - host: scan.yourorg.com
+      paths: [{path: /, pathType: Prefix}]
+  tls:
+    - secretName: sentinalscan-tls
+      hosts: [scan.yourorg.com]
+
+<span class="cm"># Deploy:</span>
+helm install sentinalscan ./helm/sentinalscan \
+  --set api.env.JWT_SECRET=$(openssl rand -hex 32) \
+  --set api.env.ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY</pre>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Tags</div>
+          <div class="tag-row"><span class="tag">Kubernetes</span><span class="tag">Helm</span><span class="tag">DevOps</span><span class="tag">HPA</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="task-item">
+      <div class="task-summary" onclick="toggle(this)">
+        <div class="task-num" style="background:#faf5ff;color:#6b46c1;">5</div>
+        <div class="task-info">
+          <div class="task-name">Stripe billing integration</div>
+          <div class="task-desc">Per-scan quota enforcement — free 5/month, Pro unlimited, webhook sync</div>
+          <div class="task-badges">
+            <span class="badge" style="background:#f7fafc;color:#718096;border-color:#e2e8f0;">MEDIUM</span>
+            <span class="badge" style="background:#faf5ff;color:#6b46c1;border-color:#e9d8fd;">SaaS</span>
+          </div>
+        </div>
+        <div class="task-right">
+          <span class="effort-chip" style="background:#fff5f5;color:#c53030;">12 hrs</span>
+          <span class="prio-chip" style="background:#f7fafc;color:#718096;">medium</span>
+          <svg class="chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 4l4 4-4 4"/></svg>
+        </div>
+      </div>
+      <div class="task-detail">
+        <div class="detail-section">
+          <div class="detail-label">Implementation</div>
+          <pre class="code-block"><span class="cm"># backend/billing.py</span>
+<span class="ck">import</span> stripe
+stripe.api_key = os.environ[<span class="cs">"STRIPE_SECRET_KEY"</span>]
+
+<span class="cv">PLAN_LIMITS</span> = {
+    <span class="cs">"free"</span>: {<span class="cs">"scans_per_month"</span>: <span class="cv">5</span>,  <span class="cs">"ai_triage"</span>: <span class="cv">False</span>, <span class="cs">"browser"</span>: <span class="cv">False</span>},
+    <span class="cs">"pro"</span>:  {<span class="cs">"scans_per_month"</span>: -<span class="cv">1</span>, <span class="cs">"ai_triage"</span>: <span class="cv">True</span>,  <span class="cs">"browser"</span>: <span class="cv">True</span>},
+}
+
+<span class="ck">async def</span> <span class="cn">check_scan_quota</span>(user: User) -> None:
+    plan = <span class="ck">await</span> get_user_plan(user.id)
+    limits = PLAN_LIMITS[plan]
+    <span class="ck">if</span> limits[<span class="cs">"scans_per_month"</span>] == -<span class="cv">1</span>:
+        <span class="ck">return</span>   <span class="cm"># unlimited plan</span>
+    month_start = datetime.now().replace(day=<span class="cv">1</span>, hour=<span class="cv">0</span>, minute=<span class="cv">0</span>)
+    count = <span class="ck">await</span> db.count_scans_since(user.id, month_start)
+    <span class="ck">if</span> count >= limits[<span class="cs">"scans_per_month"</span>]:
+        <span class="ck">raise</span> HTTPException(<span class="cv">402</span>, detail={
+            <span class="cs">"error"</span>: <span class="cs">"quota_exceeded"</span>,
+            <span class="cs">"used"</span>: count, <span class="cs">"limit"</span>: limits[<span class="cs">"scans_per_month"</span>],
+            <span class="cs">"upgrade_url"</span>: <span class="cs">"https://yourapp.com/upgrade"</span>
+        })
+
+<span class="cm"># Stripe webhook — sync subscription changes in real-time</span>
+@app.post(<span class="cs">"/webhooks/stripe"</span>)
+<span class="ck">async def</span> <span class="cn">stripe_webhook</span>(request: Request):
+    payload = <span class="ck">await</span> request.body()
+    sig = request.headers.get(<span class="cs">"stripe-signature"</span>)
+    event = stripe.Webhook.construct_event(
+        payload, sig, os.environ[<span class="cs">"STRIPE_WEBHOOK_SECRET"</span>])
+    <span class="ck">if</span> event[<span class="cs">"type"</span>] == <span class="cs">"customer.subscription.updated"</span>:
+        <span class="ck">await</span> sync_subscription(event[<span class="cs">"data"</span>][<span class="cs">"object"</span>])</pre>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Tags</div>
+          <div class="tag-row"><span class="tag">Stripe</span><span class="tag">Billing</span><span class="tag">SaaS</span><span class="tag">Webhooks</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="task-item">
+      <div class="task-summary" onclick="toggle(this)">
+        <div class="task-num" style="background:#faf5ff;color:#6b46c1;">6</div>
+        <div class="task-info">
+          <div class="task-name">Compliance report templates</div>
+          <div class="task-desc">Map every finding to OWASP Top 10, PCI DSS, SOC 2 CWE references</div>
+          <div class="task-badges">
+            <span class="badge" style="background:#f0fff4;color:#276749;border-color:#c6f6d5;">LOW</span>
+            <span class="badge" style="background:#faf5ff;color:#6b46c1;border-color:#e9d8fd;">Compliance</span>
+          </div>
+        </div>
+        <div class="task-right">
+          <span class="effort-chip" style="background:#fffbeb;color:#b7791f;">10 hrs</span>
+          <span class="prio-chip" style="background:#f0fff4;color:#276749;">low</span>
+          <svg class="chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 4l4 4-4 4"/></svg>
+        </div>
+      </div>
+      <div class="task-detail">
+        <div class="detail-section">
+          <div class="detail-label">Implementation</div>
+          <pre class="code-block"><span class="cm"># backend/compliance.py</span>
+<span class="cv">COMPLIANCE_MAP</span> = {
+    <span class="cs">"Cross-Site Scripting (XSS)"</span>: {
+        <span class="cs">"owasp"</span>:   <span class="cs">"A03:2021 — Injection"</span>,
+        <span class="cs">"pci_dss"</span>: <span class="cs">"6.3.2 — Review bespoke/custom software"</span>,
+        <span class="cs">"soc2"</span>:    <span class="cs">"CC6.6 — Logical access security measures"</span>,
+        <span class="cs">"cwe"</span>:     <span class="cs">"CWE-79"</span>,
+        <span class="cs">"cvss_base"</span>: <span class="cs">"AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N"</span>,
+    },
+    <span class="cs">"SQL Injection"</span>: {
+        <span class="cs">"owasp"</span>:   <span class="cs">"A03:2021 — Injection"</span>,
+        <span class="cs">"pci_dss"</span>: <span class="cs">"6.3.1 — Protect against known vulnerabilities"</span>,
+        <span class="cs">"soc2"</span>:    <span class="cs">"CC6.6"</span>,
+        <span class="cs">"cwe"</span>:     <span class="cs">"CWE-89"</span>,
+        <span class="cs">"cvss_base"</span>: <span class="cs">"AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"</span>,
+    },
+    <span class="cs">"Missing Security Headers"</span>: {
+        <span class="cs">"owasp"</span>:   <span class="cs">"A05:2021 — Security Misconfiguration"</span>,
+        <span class="cs">"pci_dss"</span>: <span class="cs">"6.3.3 — All system components protected"</span>,
+        <span class="cs">"soc2"</span>:    <span class="cs">"CC6.1 — Logical and physical access controls"</span>,
+        <span class="cs">"cwe"</span>:     <span class="cs">"CWE-693"</span>,
+    },
+}
+
+<span class="ck">def</span> <span class="cn">enrich_with_compliance</span>(vuln: dict) -> dict:
+    mapping = COMPLIANCE_MAP.get(vuln[<span class="cs">"vuln_type"</span>], {})
+    <span class="ck">return</span> {**vuln, <span class="cs">"compliance"</span>: mapping}</pre>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Tags</div>
+          <div class="tag-row"><span class="tag">Compliance</span><span class="tag">OWASP</span><span class="tag">PCI DSS</span><span class="tag">SOC 2</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="task-item">
+      <div class="task-summary" onclick="toggle(this)">
+        <div class="task-num" style="background:#faf5ff;color:#6b46c1;">7</div>
+        <div class="task-info">
+          <div class="task-name">Slack + email alerting</div>
+          <div class="task-desc">Notify on scan complete and new critical findings via webhook or SMTP</div>
+          <div class="task-badges">
+            <span class="badge" style="background:#f7fafc;color:#718096;border-color:#e2e8f0;">MEDIUM</span>
+            <span class="badge" style="background:#ebf8ff;color:#2b6cb0;border-color:#bee3f8;">UX</span>
+          </div>
+        </div>
+        <div class="task-right">
+          <span class="effort-chip" style="background:#fffbeb;color:#b7791f;">5 hrs</span>
+          <span class="prio-chip" style="background:#f7fafc;color:#718096;">medium</span>
+          <svg class="chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 4l4 4-4 4"/></svg>
+        </div>
+      </div>
+      <div class="task-detail">
+        <div class="detail-section">
+          <div class="detail-label">Implementation</div>
+          <pre class="code-block"><span class="ck">async def</span> <span class="cn">notify_scan_complete</span>(user: User, scan: dict,
+                                new_criticals: int):
+    <span class="ck">if</span> user.slack_webhook:
+        blocks = [{
+            <span class="cs">"type"</span>: <span class="cs">"section"</span>,
+            <span class="cs">"text"</span>: {<span class="cs">"type"</span>: <span class="cs">"mrkdwn"</span>,
+                <span class="cs">"text"</span>: (
+                    <span class="cs">f"*Scan complete*: {scan['target_url']}\n"</span>
+                    + (<span class="cs">f"*{new_criticals} new critical findings*"</span>
+                       <span class="ck">if</span> new_criticals
+                       <span class="ck">else</span> <span class="cs">"No new critical findings ✓"</span>)
+                )}
+        }, {
+            <span class="cs">"type"</span>: <span class="cs">"actions"</span>,
+            <span class="cs">"elements"</span>: [{
+                <span class="cs">"type"</span>: <span class="cs">"button"</span>,
+                <span class="cs">"text"</span>: {<span class="cs">"type"</span>:<span class="cs">"plain_text"</span>,<span class="cs">"text"</span>:<span class="cs">"View report"</span>},
+                <span class="cs">"url"</span>: <span class="cs">f"https://yourapp.com/scan/{scan['id']}"</span>
+            }]
+        }]
+        <span class="ck">async with</span> httpx.AsyncClient() <span class="ck">as</span> c:
+            <span class="ck">await</span> c.post(user.slack_webhook,
+                         json={<span class="cs">"blocks"</span>: blocks})</pre>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Tags</div>
+          <div class="tag-row"><span class="tag">Notifications</span><span class="tag">Slack</span><span class="tag">Email</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="task-item">
+      <div class="task-summary" onclick="toggle(this)">
+        <div class="task-num" style="background:#faf5ff;color:#6b46c1;">8</div>
+        <div class="task-info">
+          <div class="task-name">VS Code extension for inline findings</div>
+          <div class="task-desc">Show vulnerability diagnostics in editor gutter — no context switch</div>
+          <div class="task-badges">
+            <span class="badge" style="background:#f0fff4;color:#276749;border-color:#c6f6d5;">LOW</span>
+            <span class="badge" style="background:#ebf8ff;color:#2b6cb0;border-color:#bee3f8;">DX</span>
+          </div>
+        </div>
+        <div class="task-right">
+          <span class="effort-chip" style="background:#fff5f5;color:#c53030;">16 hrs</span>
+          <span class="prio-chip" style="background:#f0fff4;color:#276749;">low</span>
+          <svg class="chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 4l4 4-4 4"/></svg>
+        </div>
+      </div>
+      <div class="task-detail">
+        <div class="detail-section">
+          <div class="detail-label">Implementation</div>
+          <pre class="code-block"><span class="cm">// extension/src/extension.ts</span>
+<span class="ck">import</span> * <span class="ck">as</span> vscode <span class="ck">from</span> <span class="cs">'vscode'</span>;
+
+<span class="ck">export function</span> <span class="cn">activate</span>(ctx: vscode.ExtensionContext) {
+    <span class="ck">const</span> diag = vscode.languages.createDiagnosticCollection(<span class="cs">'sentinalscan'</span>);
+    ctx.subscriptions.push(diag);
+
+    ctx.subscriptions.push(
+        vscode.commands.registerCommand(
+            <span class="cs">'sentinalscan.loadFindings'</span>, <span class="ck">async</span> () => {
+                <span class="ck">const</span> cfg = vscode.workspace.getConfiguration(<span class="cs">'sentinalscan'</span>);
+                <span class="ck">const</span> apiBase = cfg.get&lt;string&gt;(<span class="cs">'apiBase'</span>);
+                <span class="ck">const</span> scanId = cfg.get&lt;string&gt;(<span class="cs">'lastScanId'</span>);
+                <span class="ck">const</span> res = <span class="ck">await</span> fetch(<span class="cs">`${apiBase}/scan/${scanId}/results`</span>);
+                <span class="ck">const</span> findings = <span class="ck">await</span> res.json();
+                _mapFindingsToEditor(findings, diag);
+            }
+        )
+    );
+}
+
+<span class="ck">function</span> <span class="cn">_mapFindingsToEditor</span>(findings, diag) {
+    <span class="ck">const</span> byFile = <span class="ck">new</span> Map();
+    <span class="ck">for</span> (<span class="ck">const</span> f <span class="ck">of</span> findings) {
+        <span class="ck">const</span> uri = _urlToFileUri(f.url);
+        <span class="ck">if</span> (!byFile.has(uri)) byFile.set(uri, []);
+        byFile.get(uri).push(<span class="ck">new</span> vscode.Diagnostic(
+            <span class="ck">new</span> vscode.Range(<span class="cv">0</span>, <span class="cv">0</span>, <span class="cv">0</span>, <span class="cv">0</span>),
+            <span class="cs">`[SentinalScan] ${f.vuln_type}: ${f.description}`</span>,
+            _severityToVSCode(f.severity_level)
+        ));
+    }
+    diag.clear();
+    byFile.forEach((d, u) => diag.set(vscode.Uri.parse(u), d));
+}</pre>
+        </div>
+        <div class="detail-section">
+          <div class="detail-label">Tags</div>
+          <div class="tag-row"><span class="tag">VS Code</span><span class="tag">Extension</span><span class="tag">TypeScript</span><span class="tag">DX</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div><!-- /phase 4 -->
+
+<hr/>
+
+<!-- ═══════════════════════════════════ SECURITY DEEP-DIVE ═══════════════════════════════════ -->
+<div id="security" class="section-header">
+  <div class="section-icon" style="background:#fff5f5;color:#c53030;border:1px solid #fed7d7;">🔒</div>
+  <div><h2>Security hardening deep-dive</h2></div>
+</div>
+
+<table class="vuln-table">
+  <thead>
+    <tr><th>Finding</th><th>Severity</th><th>Location</th><th>Fix</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>No API authentication</strong> — anyone reaching port 8000 can trigger scans</td>
+      <td><span class="pill" style="background:#fff5f5;color:#c53030;">Critical</span></td>
+      <td><code>api.py</code></td>
+      <td>X-API-Key header via <code>Depends(require_api_key)</code></td>
+    </tr>
+    <tr>
+      <td><strong>SSRF via target URL</strong> — scanner acts as proxy to internal resources</td>
+      <td><span class="pill" style="background:#fff5f5;color:#c53030;">Critical</span></td>
+      <td><code>_validate_target()</code></td>
+      <td>Hard-reject RFC-1918 + metadata CIDRs</td>
+    </tr>
+    <tr>
+      <td><strong>Asyncio loop race</strong> — unguarded global reference crashes scan thread silently</td>
+      <td><span class="pill" style="background:#fffbeb;color:#b7791f;">High</span></td>
+      <td><code>WebSocketLogger</code></td>
+      <td>None guard + <code>loop.is_closed()</code> check</td>
+    </tr>
+    <tr>
+      <td><strong>XSS payloads in log stream</strong> — reflect into operator's browser</td>
+      <td><span class="pill" style="background:#f7fafc;color:#718096;">Medium</span></td>
+      <td><code>LogViewer.jsx</code></td>
+      <td>Strip angle brackets server-side before pub/sub</td>
+    </tr>
+    <tr>
+      <td><strong>robots.txt uses wildcard agent</strong> — wrong agent passed to <code>can_fetch()</code></td>
+      <td><span class="pill" style="background:#f7fafc;color:#718096;">Medium</span></td>
+      <td><code>_load_robots_txt()</code></td>
+      <td>Pass <code>self.config.user_agent</code> not <code>"*"</code></td>
+    </tr>
+    <tr>
+      <td><strong>Auth tokens in plaintext JSON</strong> — appear in server logs</td>
+      <td><span class="pill" style="background:#f0fff4;color:#276749;">Low</span></td>
+      <td><code>ScanRequest</code></td>
+      <td>Exclude sensitive fields from logging middleware</td>
+    </tr>
+    <tr>
+      <td><strong>Unpinned dependencies</strong> — supply chain risk</td>
+      <td><span class="pill" style="background:#f0fff4;color:#276749;">Low</span></td>
+      <td><code>requirements.txt</code></td>
+      <td>pip-compile with <code>--generate-hashes</code></td>
+    </tr>
+    <tr>
+      <td><strong>Server header reveals stack</strong> — uvicorn version leaked</td>
+      <td><span class="pill" style="background:#f0fff4;color:#276749;">Info</span></td>
+      <td><code>uvicorn response headers</code></td>
+      <td><code>SecurityHeadersMiddleware</code> pops Server header</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr/>
+
+<!-- ═══════════════════════════════════ TECH STACK ═══════════════════════════════════ -->
+<div id="stack" class="section-header">
+  <div class="section-icon" style="background:#e6fffa;color:#2c7a7b;border:1px solid #b2f5ea;">⚙</div>
+  <div><h2>Tech stack changes</h2></div>
+</div>
+
+<div class="stack-grid">
+  <div class="stack-card">
+    <div class="stack-card-header">HTTP client</div>
+    <div class="stack-row">
+      <div class="stack-change"><span class="from-chip">requests</span><span class="arrow-sep">→</span><span class="to-chip">httpx</span></div>
+      <div class="stack-reason">Identical API. Adds async, HTTP/2, connection limits. Required prerequisite for the entire async migration. Drop-in for 95% of usage.</div>
+    </div>
+  </div>
+  <div class="stack-card">
+    <div class="stack-card-header">HTML parsing</div>
+    <div class="stack-row">
+      <div class="stack-change"><span class="from-chip">bs4 (links)</span><span class="arrow-sep">→</span><span class="to-chip">selectolax</span></div>
+      <div class="stack-reason">C-backed parser, 5–10× faster for CSS selector queries. Keep bs4 only for form field traversal where its navigation API is irreplaceable.</div>
+    </div>
+  </div>
+  <div class="stack-card">
+    <div class="stack-card-header">Task queue</div>
+    <div class="stack-row">
+      <div class="stack-change"><span class="from-chip">threading.Thread</span><span class="arrow-sep">→</span><span class="to-chip">Celery + Redis</span></div>
+      <div class="stack-reason">Decouples HTTP from compute. Horizontal worker scaling, built-in retry, task result TTL, and rate limiting per queue.</div>
+    </div>
+  </div>
+  <div class="stack-card">
+    <div class="stack-card-header">State &amp; persistence</div>
+    <div class="stack-row">
+      <div class="stack-change"><span class="from-chip">dict (in-process)</span><span class="arrow-sep">→</span><span class="to-chip">Redis + Postgres</span></div>
+      <div class="stack-reason">Redis for ephemeral state and pub/sub. Postgres for permanent scan history, user accounts, and finding diffs. Survives restarts.</div>
+    </div>
+  </div>
+  <div class="stack-card">
+    <div class="stack-card-header">Authentication</div>
+    <div class="stack-row">
+      <div class="stack-change"><span class="from-chip">static API key</span><span class="arrow-sep">→</span><span class="to-chip">fastapi-users JWT</span></div>
+      <div class="stack-reason">Per-user token rotation, email verification, password reset — all included. Async-native, Pydantic v2 compatible, pluggable OAuth.</div>
+    </div>
+  </div>
+  <div class="stack-card">
+    <div class="stack-card-header">Browser automation</div>
+    <div class="stack-row">
+      <div class="stack-change"><span class="from-chip">(none)</span><span class="arrow-sep">→</span><span class="to-chip">Playwright</span></div>
+      <div class="stack-reason">Covers SPAs and JS-rendered apps invisible to the static crawler. Async API matches the rest of the stack. Network interception for payload injection.</div>
+    </div>
+  </div>
+  <div class="stack-card">
+    <div class="stack-card-header">Logging</div>
+    <div class="stack-row">
+      <div class="stack-change"><span class="from-chip">stdlib logging</span><span class="arrow-sep">→</span><span class="to-chip">structlog</span></div>
+      <div class="stack-reason">JSON output with bound context (scan_id, target). Drop into ELK, Datadog, or CloudWatch with zero config changes.</div>
+    </div>
+  </div>
+  <div class="stack-card">
+    <div class="stack-card-header">PDF generation</div>
+    <div class="stack-row">
+      <div class="stack-change"><span class="from-chip">HTML string concat</span><span class="arrow-sep">→</span><span class="to-chip">Jinja2 + WeasyPrint</span></div>
+      <div class="stack-reason">Separates template from logic. WeasyPrint renders CSS-styled HTML to PDF with page numbers and table-of-contents via CSS Paged Media spec.</div>
+    </div>
+  </div>
+  <div class="stack-card">
+    <div class="stack-card-header">Frontend query</div>
+    <div class="stack-row">
+      <div class="stack-change"><span class="from-chip">TanStack Query</span><span class="arrow-sep">→</span><span class="keep-chip">keep</span></div>
+      <div class="stack-reason">Already the right choice. Fix the dead <code>options</code> key in <code>useScanResults</code> and gate <code>enabled</code> on a non-null previous scan ID. No library change needed.</div>
+    </div>
+  </div>
+  <div class="stack-card">
+    <div class="stack-card-header">Data validation</div>
+    <div class="stack-row">
+      <div class="stack-change"><span class="from-chip">Pydantic (partial)</span><span class="arrow-sep">→</span><span class="to-chip">Pydantic v2 full</span></div>
+      <div class="stack-reason">Add <code>@field_validator</code> on <code>target_url</code> (URL format), <code>max_pages</code> (1–500 range), <code>workers</code> (1–20). Errors surface as 422s before the scan starts.</div>
+    </div>
+  </div>
+</div>
+
+<hr/>
+
+<!-- ═══════════════════════════════════ PERF TARGETS ═══════════════════════════════════ -->
+<div id="perf" class="section-header">
+  <div class="section-icon" style="background:#f0fff4;color:#276749;border:1px solid #c6f6d5;">⚡</div>
+  <div><h2>Performance benchmark targets</h2></div>
+</div>
+
+<p class="text-muted" style="margin-bottom:1rem">Measurable targets to validate before shipping Phase 2. Add these as a <code>benchmarks/</code> directory using <code>pytest-benchmark</code> so regressions are caught in CI.</p>
+
+<table class="perf-table">
+  <thead>
+    <tr><th>Metric</th><th>Current (baseline)</th><th>Target (post-async)</th><th>Measure with</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="font-family:var(--sans);font-size:13px;">Crawl 50 pages, 5 workers</td>
+      <td>~90s sequential</td>
+      <td style="color:#276749;">&#60;20s concurrent</td>
+      <td>time asyncio.run(crawler.crawl())</td>
+    </tr>
+    <tr>
+      <td style="font-family:var(--sans);font-size:13px;">SQLi time-based, 3 forms</td>
+      <td>~27s sequential</td>
+      <td style="color:#276749;">&#60;9s concurrent</td>
+      <td>pytest --benchmark-only</td>
+    </tr>
+    <tr>
+      <td style="font-family:var(--sans);font-size:13px;">Sensitive file probe (8 files)</td>
+      <td>~12s sequential</td>
+      <td style="color:#276749;">&#60;3s concurrent</td>
+      <td>pytest --benchmark-only</td>
+    </tr>
+    <tr>
+      <td style="font-family:var(--sans);font-size:13px;">API response to /scan/start</td>
+      <td>blocks until done</td>
+      <td style="color:#276749;">&#60;50ms enqueue</td>
+      <td>curl -w "%{time_total}"</td>
+    </tr>
+    <tr>
+      <td style="font-family:var(--sans);font-size:13px;">Memory per Celery worker</td>
+      <td>unbounded</td>
+      <td style="color:#276749;">&#60;256 MB</td>
+      <td>docker stats</td>
+    </tr>
+    <tr>
+      <td style="font-family:var(--sans);font-size:13px;">Test suite runtime</td>
+      <td>0 tests</td>
+      <td style="color:#276749;">&#60;30s full suite</td>
+      <td>pytest --tb=short -q</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr/>
+
+<!-- ═══════════════════════════════════ STARTUP ═══════════════════════════════════ -->
+<div id="startup" class="section-header">
+  <div class="section-icon" style="background:#faf5ff;color:#6b46c1;border:1px solid #e9d8fd;">🚀</div>
+  <div><h2>Startup positioning</h2></div>
+</div>
+
+<div class="path-grid">
+  <div class="path-card">
+    <div class="path-card-head">
+      <div class="path-letter" style="background:#ebf8ff;color:#2b6cb0;">A</div>
+      <div class="path-title">Developer security SaaS</div>
+    </div>
+    <div class="path-body">GitHub Actions integration is the acquisition funnel: free public repos get unlimited scans, private repos require Pro. Pricing anchors on AI remediation reports as the premium feature — engineers pay for the exact code fix, not just the finding.</div>
+    <span class="path-hook" style="background:#ebf8ff;color:#2b6cb0;">Comp set: Snyk, Socket, Semgrep</span>
+  </div>
+  <div class="path-card">
+    <div class="path-card-head">
+      <div class="path-letter" style="background:#fff5f0;color:#c05621;">B</div>
+      <div class="path-title">Pen-testing platform</div>
+    </div>
+    <div class="path-body">Target small security consulting firms who scan 50–200 targets per engagement. The compliance mapping feature (OWASP → PCI DSS → SOC 2) saves 4–6 hours of manual cross-referencing per report. Per-seat annual license.</div>
+    <span class="path-hook" style="background:#fff5f0;color:#c05621;">Differentiator: Playwright + AI reports</span>
+  </div>
+  <div class="path-card">
+    <div class="path-card-head">
+      <div class="path-letter" style="background:#e6fffa;color:#2c7a7b;">C</div>
+      <div class="path-title">Open-core enterprise</div>
+    </div>
+    <div class="path-body">MIT-licensed core builds community. Enterprise tier adds: SSO/SAML, audit logs, private Helm chart, SLA support, and AI triage behind a license key. Community growth drives enterprise pipeline.</div>
+    <span class="path-hook" style="background:#e6fffa;color:#2c7a7b;">Model: HashiCorp / Sentry</span>
+  </div>
+</div>
+
+<hr/>
+
+<!-- ═══════════════════════════════════ PORTFOLIO README ═══════════════════════════════════ -->
+<div id="portfolio" class="section-header">
+  <div class="section-icon" style="background:#fffbeb;color:#b7791f;border:1px solid #fbd38d;">📄</div>
+  <div><h2>Portfolio README structure</h2></div>
+</div>
+
+<div class="callout info">
+  <div class="callout-title">The 90-second rule</div>
+  A hiring committee will spend 90 seconds on the README before deciding whether to look deeper. The structure below is optimized for that window.
+</div>
+
+<div class="timeline">
+  <div class="timeline-item">
+    <div class="timeline-dot" style="background:#2b6cb0;"></div>
+    <div class="timeline-head">Paragraph 1 — What it does and scale</div>
+    <div class="timeline-body">What it does, who it's for, one sentence on measurable scale: "Scans 200+ pages/minute with async concurrency, detecting 12 vulnerability classes including SQLi, XSS, and SSRF."</div>
+  </div>
+  <div class="timeline-item">
+    <div class="timeline-dot" style="background:#2b6cb0;"></div>
+    <div class="timeline-head">Paragraph 2 — Architecture decision rationale</div>
+    <div class="timeline-body">Why httpx over requests, why Celery over threading, why Redis pub/sub for real-time logs. This signals choices were deliberate and demonstrates systems thinking — the highest-signal section for a senior role.</div>
+  </div>
+  <div class="timeline-item">
+    <div class="timeline-dot" style="background:#c53030;"></div>
+    <div class="timeline-head">Section: Security hardening decisions</div>
+    <div class="timeline-body">A bullet list of the specific vulnerabilities you found in the original design and fixed. For a security engineering role this is the most important section — you attacked your own tool.</div>
+  </div>
+  <div class="timeline-item">
+    <div class="timeline-dot" style="background:#276749;"></div>
+    <div class="timeline-head">Section: Before/after performance numbers</div>
+    <div class="timeline-body">The benchmark table: crawl time from 90s to under 20s, API response from blocking to under 50ms. Concrete numbers matter more than vague performance claims.</div>
+  </div>
+  <div class="timeline-item">
+    <div class="timeline-dot" style="background:#b7791f;"></div>
+    <div class="timeline-head">One-command setup — non-negotiable</div>
+    <div class="timeline-body"><code>docker compose up</code> must work on a fresh machine. If a reviewer cannot get it running in 3 minutes they close the tab. This is the single most important non-code element of the portfolio.</div>
+  </div>
+  <div class="timeline-item">
+    <div class="timeline-dot" style="background:#6b46c1;"></div>
+    <div class="timeline-head">Architecture diagram in the repo</div>
+    <div class="timeline-body">Link directly to an SVG committed to the repo, not an external service. GitHub renders SVGs inline in Markdown. The target architecture diagram from this roadmap is ready to commit.</div>
+  </div>
+</div>
+
+<hr/>
+
+<!-- ═══════════════════════════════════ FOOTER ═══════════════════════════════════ -->
+<div style="text-align:center;color:var(--text3);font-size:12px;padding-top:2rem;">
+  <p>SentinalScan Upgrade Roadmap &nbsp;·&nbsp; Generated April 2026 &nbsp;·&nbsp; 4 phases &nbsp;·&nbsp; 32 tasks &nbsp;·&nbsp; ~300 hours</p>
+  <p style="margin-top:.4rem;">For educational and authorized security testing purposes only.</p>
+</div>
+
+</div><!-- /page-wrap -->
+
+<script>
+function toggle(header) {
+  const item = header.closest('.task-item');
+  const body = item.querySelector('.task-detail');
+  const chev = header.querySelector('.chevron');
+  if (!body) return;
+  const isOpen = body.classList.toggle('open');
+  if (chev) chev.style.transform = isOpen ? 'rotate(90deg)' : '';
+}
+</script>
+</body>
+</html>

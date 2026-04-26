@@ -15,11 +15,46 @@ from pathlib import Path
 import sys
 import os
 
-# Import the scanner modules
-from backend.vuln_scanner import (
-    VulnerabilityScanner, ScanConfig, Vulnerability, 
-    VulnType, SeverityLevel, VERSION, BANNER
-)
+# Set up path to include backend for imports
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "backend")))
+
+# Import the new scanner models and engine
+try:
+    from app.models.vulnerability import Vulnerability, VulnType, SeverityLevel
+    from app.models.scan import ScanRequest
+    from app.services.scanner.engine import ScannerEngine
+    from app.core.config import settings
+except ImportError as e:
+    print(f"Error importing backend modules: {e}")
+    print("Make sure you are running from the project root and the 'backend' directory exists.")
+
+VERSION = "2.0.0"
+BANNER = """
+   _____            _   _             _  _____                     
+  / ____|          | | (_)           | |/ ____|                    
+ | (___   ___ _ __ | |_ _ _ __   __ _| | (___   ___ __ _ _ __      
+  \___ \ / _ \ '_ \| __| | '_ \ / _` | |\___ \ / __/ _` | '_ \     
+  ____) |  __/ | | | |_| | | | | (_| | |____) | (_| (_| | | | |    
+ |_____/ \___|_| |_|\__|_|_| |_|\__,_|_|_____/ \___\__,_|_| |_|    
+                                                                    
+         Advanced Vulnerability Scanner — v2.0.0
+"""
+
+import logging
+
+class GuiLogHandler(logging.Handler):
+    """Custom logging handler to redirect logs to the GUI queue"""
+    def __init__(self, log_queue):
+        super().__init__()
+        self.log_queue = log_queue
+        self.setFormatter(logging.Formatter('%(message)s'))
+
+    def emit(self, record):
+        try:
+            msg = self.format(record)
+            self.log_queue.put(msg)
+        except Exception:
+            self.handleError(record)
 
 
 class ScannerGUI(tk.Tk):
@@ -342,7 +377,7 @@ class ScannerGUI(tk.Tk):
             self.output_dir.set(directory)
     
     def get_scan_config(self):
-        """Create ScanConfig from GUI inputs"""
+        """Create ScanRequest from GUI inputs"""
         # Parse cookies
         cookies = None
         if self.cookies.get():
@@ -366,19 +401,17 @@ class ScannerGUI(tk.Tk):
         if self.exclude_paths.get():
             exclude_paths = [path.strip() for path in self.exclude_paths.get().split(',')]
         
-        return ScanConfig(
+        return ScanRequest(
             target_url=self.target_url.get(),
             max_pages=self.max_pages.get(),
-            request_delay=self.request_delay.get(),
-            verify_ssl=self.verify_ssl.get(),
-            obey_robots=self.obey_ssl.get(),
             workers=self.workers.get(),
+            verify_ssl=self.verify_ssl.get(),
+            obey_robots=self.obey_robots.get(),
             timeout=self.timeout.get(),
             auth_token=self.auth_token.get() or None,
             cookies=cookies,
             headers=headers,
-            exclude_paths=exclude_paths,
-            verbose=True
+            exclude_paths=exclude_paths
         )
     
     def start_scan(self):
@@ -420,17 +453,19 @@ class ScannerGUI(tk.Tk):
         """Run the scan in a background thread"""
         try:
             config = self.get_scan_config()
-            self.scanner = VulnerabilityScanner(config)
+            self.scanner = ScannerEngine(config)
             
-            # Override scanner's logger to use our GUI logging
-            original_log = self.scanner.logger.info
-            def gui_log(message):
-                original_log(message)
-                self.log_message(message)
-            self.scanner.logger.info = gui_log
+            # Setup logging to GUI
+            gui_handler = GuiLogHandler(self.log_queue)
+            root_logger = logging.getLogger()
+            root_logger.addHandler(gui_handler)
+            root_logger.setLevel(logging.INFO)
             
             # Run the scan
-            self.vulnerabilities = self.scanner.scan()
+            self.vulnerabilities = self.scanner.run()
+            
+            # Remove the handler after scan
+            root_logger.removeHandler(gui_handler)
             
             # Update GUI with results
             self.after(0, self.scan_completed)
@@ -465,7 +500,7 @@ class ScannerGUI(tk.Tk):
     def stop_scan(self):
         """Stop the current scan"""
         if self.scanner and self.scanning:
-            self.scanner.stop_scan()
+            self.scanner.stop()
             self.status_var.set("Stopping scan...")
             self.stop_button.config(state=tk.DISABLED)
     
@@ -483,20 +518,21 @@ class ScannerGUI(tk.Tk):
         # Add vulnerabilities to treeview
         for vuln in self.vulnerabilities:
             # Update counts
-            severity_count[vuln.severity_level] += 1
+            severity = vuln.severity_level.value if hasattr(vuln.severity_level, 'value') else str(vuln.severity_level)
+            severity_count[severity] += 1
             
             # Add to treeview
             item_id = self.results_tree.insert(
                 "", 
                 tk.END, 
                 values=(
-                    vuln.severity_level,
-                    vuln.vuln_type,
+                    severity,
+                    vuln.vuln_type.value if hasattr(vuln.vuln_type, 'value') else str(vuln.vuln_type),
                     vuln.url,
                     vuln.description,
                     vuln.confidence
                 ),
-                tags=(vuln.severity_level,)
+                tags=(severity,)
             )
             
             # Store vulnerability object reference
@@ -546,17 +582,18 @@ class ScannerGUI(tk.Tk):
         main_frame.pack(fill=tk.BOTH, expand=True)
         
         # Severity header
+        severity_val = vuln.severity_level.value if hasattr(vuln.severity_level, 'value') else str(vuln.severity_level)
         severity_color = {
             "Critical": "#ff4444", "High": "#ff8800", "Medium": "#ffcc00",
             "Low": "#88cc00", "Info": "#0088ff"
-        }[vuln.severity_level]
+        }.get(severity_val, "#888888")
         
         header_frame = ttk.Frame(main_frame)
         header_frame.pack(fill=tk.X, pady=(0,10))
         
         severity_label = tk.Label(
             header_frame, 
-            text=f" {vuln.severity_level} ",
+            text=f" {severity_val} ",
             background=severity_color,
             foreground="white",
             font=("Arial", 12, "bold"),
@@ -567,7 +604,7 @@ class ScannerGUI(tk.Tk):
         
         type_label = ttk.Label(
             header_frame, 
-            text=vuln.vuln_type,
+            text=vuln.vuln_type.value if hasattr(vuln.vuln_type, 'value') else str(vuln.vuln_type),
             font=("Arial", 12, "bold")
         )
         type_label.pack(side=tk.LEFT)
@@ -591,7 +628,7 @@ URL: {vuln.url}
 Description:
 {vuln.description}
 
-Severity: {vuln.severity_level} (Score: {vuln.severity_score})
+Severity: {severity_val} (Score: {vuln.severity_score})
 Confidence: {vuln.confidence}
 
 Evidence:
@@ -600,7 +637,7 @@ Evidence:
 Remediation:
 {vuln.remediation}
 
-Detected: {datetime.fromtimestamp(vuln.timestamp).strftime('%Y-%m-%d %H:%M:%S')}
+Detected: {datetime.fromtimestamp(vuln.timestamp).strftime('%Y-%m-%d %H:%M:%S') if vuln.timestamp else 'N/A'}
 """
         details_text.insert("1.0", details_content)
         details_text.config(state=tk.DISABLED)
@@ -623,22 +660,32 @@ Detected: {datetime.fromtimestamp(vuln.timestamp).strftime('%Y-%m-%d %H:%M:%S')}
             return
         
         try:
-            output_dir = self.output_dir.get()
+            output_dir = Path(self.output_dir.get())
+            output_dir.mkdir(parents=True, exist_ok=True)
             
-            if report_type == "text":
-                report_path = self.scanner.generate_text_report(output_dir)
-            elif report_type == "json":
-                report_path = self.scanner.generate_json_report(output_dir)
-            elif report_type == "html":
-                report_path = self.scanner.generate_html_report(output_dir)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"scan_report_{timestamp}.{report_type}"
+            report_path = output_dir / filename
+            
+            if report_type == "json":
+                results = [v.model_dump() for v in self.vulnerabilities]
+                with open(report_path, 'w') as f:
+                    json.dump(results, f, indent=4)
+            elif report_type == "text":
+                with open(report_path, 'w') as f:
+                    f.write(f"SENTINALSCAN REPORT - {datetime.now()}\n")
+                    f.write(f"{'='*50}\n\n")
+                    for v in self.vulnerabilities:
+                        f.write(f"[{v.severity_level}] {v.vuln_type}\n")
+                        f.write(f"URL: {v.url}\n")
+                        f.write(f"Description: {v.description}\n")
+                        f.write(f"Remediation: {v.remediation}\n")
+                        f.write(f"{'-'*30}\n")
             else:
-                messagebox.showerror("Error", f"Unknown report type: {report_type}")
+                messagebox.showinfo("Note", "HTML report generation is coming soon. Please use JSON or Text for now.")
                 return
-            
-            if report_path:
-                messagebox.showinfo("Success", f"Report generated successfully:\n{report_path}")
-            else:
-                messagebox.showerror("Error", "Failed to generate report.")
+
+            messagebox.showinfo("Success", f"Report generated successfully:\n{report_path}")
                 
         except Exception as e:
             messagebox.showerror("Error", f"Failed to generate report: {str(e)}")

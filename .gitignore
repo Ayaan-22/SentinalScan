@@ -1,12 +1,17 @@
-# Byte-compiled / optimized / DLL files
+# ── Project Specific ──────────────────
+.env
+.env.local
+.env.*
+!.env.example
+backend/.env
+frontend/.env
+
+# ── Python ─────────────────────────────
 __pycache__/
 *.py[cod]
 *$py.class
-
-# C extensions
-*.so
-
-# Distribution / packaging
+*.pyo
+*.pyd
 .Python
 build/
 develop-eggs/
@@ -24,22 +29,30 @@ share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+MANIFEST
 
-# Virtual environment
+# ── Virtual Environments ──────────────
 venv/
+.venv/
 env/
 ENV/
-.venv/
-.env/
+env.bak/
+venv.bak/
 
-# PyInstaller
-*.manifest
-*.spec
+# ── Node / Frontend ───────────────────
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/build/
+.cache/
+.eslintcache/
+.npm
+.yarn-integrity
+*.tsbuildinfo
 
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
+# ── Testing ────────────────────────────
+.pytest_cache/
 .coverage
 .coverage.*
 .cache
@@ -48,31 +61,42 @@ coverage.xml
 *.cover
 *.py,cover
 .hypothesis/
-pytest_cache/
+.nox/
+.tox/
+htmlcov/
+.mypy_cache/
+.ruff_cache/
 
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# IDEs and editors
+# ── IDE & Editors ─────────────────────
 .vscode/
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/settings.json
 .idea/
 *.swp
 *.swo
-
-# MacOS
+*~
 .DS_Store
-
-# Windows
 Thumbs.db
-ehthumbs.db
+desktop.ini
+*.sublime-project
+*.sublime-workspace
 
-# Generated reports
-reports/
+# ── Databases ─────────────────────────
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
 
-# Frontend
-node_modules/
-frontend/node_modules/
-frontend/dist/
-
-# Logs
+# ── Misc / Logs ───────────────────────
 *.log
+*.bak
+*.tmp
+*.temp
+reports/*.json
+reports/*.html
+reports/*.pdf
+scans/
+debug/

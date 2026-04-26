@@ -1,0 +1,1574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SentinalScan — Implementation Guide</title>
+<style>
+:root {
+  --bg: #f8f9fb;
+  --surface: #ffffff;
+  --surface2: #f1f3f7;
+  --border: #e2e6ed;
+  --border2: #d0d5de;
+  --text: #0f1117;
+  --text2: #4a5568;
+  --text3: #718096;
+  --mono: 'Fira Code','Cascadia Code','Consolas',monospace;
+  --sans: -apple-system,'Inter','Segoe UI',system-ui,sans-serif;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --shadow: 0 1px 3px rgba(0,0,0,.08);
+  --shadow-md: 0 4px 12px rgba(0,0,0,.1);
+  /* semantic */
+  --info-bg: #ebf8ff; --info-text: #2b6cb0; --info-border: #63b3ed;
+  --warn-bg: #fffbeb; --warn-text: #b7791f; --warn-border: #f6ad55;
+  --danger-bg: #fff5f5; --danger-text: #c53030; --danger-border: #fc8181;
+  --success-bg: #f0fff4; --success-text: #276749; --success-border: #68d391;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:1.6;font-size:15px}
+.page-wrap{max-width:1000px;margin:0 auto;padding:2rem 1.5rem 5rem}
+
+/* COVER */
+.cover{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:2.5rem 3rem;margin-bottom:2rem;box-shadow:var(--shadow-md);position:relative;overflow:hidden}
+.cover::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#185FA5 0%,#1D9E75 50%,#7F77DD 100%)}
+.cover-eyebrow{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:.5rem}
+.cover h1{font-size:1.9rem;font-weight:700;line-height:1.2;margin-bottom:.75rem}
+.cover h1 span{color:#185FA5}
+.cover p{font-size:14px;color:var(--text2);line-height:1.6;max-width:600px}
+.cover-meta{display:flex;flex-wrap:wrap;gap:1rem;font-size:13px;color:var(--text2);margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid var(--border)}
+.cover-meta strong{color:var(--text)}
+.pill{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px}
+
+/* NAV TABS */
+.nav-outer{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem 1.25rem;margin-bottom:2rem;box-shadow:var(--shadow)}
+.nav-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:.75rem}
+.nav{display:flex;flex-wrap:wrap;gap:6px}
+.nav-btn{font-size:12px;font-weight:500;padding:6px 14px;border-radius:var(--radius);border:1px solid var(--border);background:transparent;cursor:pointer;color:var(--text2);transition:all .15s;white-space:nowrap}
+.nav-btn:hover{background:var(--surface2);color:var(--text);border-color:var(--border2)}
+.nav-btn.active{background:var(--text);color:var(--surface);border-color:var(--text)}
+
+/* TABS */
+.tab{display:none}.tab.active{display:block}
+
+/* SECTION */
+.section{margin-bottom:2rem}
+.section-header{display:flex;align-items:center;gap:.6rem;margin-bottom:1rem;padding-bottom:.6rem;border-bottom:1px solid var(--border)}
+.section-icon{width:28px;height:28px;border-radius:var(--radius);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0}
+.section h2{font-size:1.05rem;font-weight:600}
+.prose{font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:.75rem}
+.prose code{font-family:var(--mono);font-size:12px;background:var(--surface2);padding:1px 5px;border-radius:4px;color:var(--text)}
+
+/* CODE BLOCKS */
+.code-wrap{position:relative;margin-bottom:1rem}
+.code-label{position:absolute;top:.6rem;right:.8rem;font-size:10px;font-weight:600;color:var(--text3);font-family:var(--sans);text-transform:uppercase;letter-spacing:.06em;z-index:1}
+pre.code{background:#1a1d23;color:#abb2bf;border-radius:var(--radius);padding:1rem 1.25rem;font-family:var(--mono);font-size:12px;line-height:1.75;overflow-x:auto;white-space:pre;border:none}
+pre.code .cm{color:#5c6370}
+pre.code .ck{color:#c678dd}
+pre.code .cs{color:#98c379}
+pre.code .cv{color:#e5c07b}
+pre.code .cn{color:#61afef;font-style:italic}
+
+/* STEPS */
+.step-list{display:flex;flex-direction:column;gap:.6rem;margin-bottom:1rem}
+.step{display:flex;gap:.75rem;padding:.85rem 1rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg)}
+.step-num{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px}
+.step-head{font-size:14px;font-weight:600;margin-bottom:3px}
+.step-desc{font-size:12px;color:var(--text2);line-height:1.55}
+
+/* CALLOUTS */
+.callout{border-radius:var(--radius);padding:.9rem 1.1rem;margin-bottom:1rem;border-left:3px solid;font-size:13px;line-height:1.65}
+.callout-title{font-weight:600;margin-bottom:.3rem;font-size:13px}
+.callout.info{background:var(--info-bg);border-color:var(--info-border);color:var(--info-text)}
+.callout.warn{background:var(--warn-bg);border-color:var(--warn-border);color:var(--warn-text)}
+.callout.danger{background:var(--danger-bg);border-color:var(--danger-border);color:var(--danger-text)}
+.callout.success{background:var(--success-bg);border-color:var(--success-border);color:var(--success-text)}
+
+/* GRID */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1rem}
+@media(max-width:600px){.grid2{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem 1.1rem}
+.card-title{font-size:13px;font-weight:600;margin-bottom:.35rem}
+.card-body{font-size:12px;color:var(--text2);line-height:1.55}
+
+/* FILE TREE */
+.tree{font-family:var(--mono);font-size:12px;line-height:1.9;color:var(--text2);background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.25rem;margin-bottom:1rem;overflow-x:auto}
+.tree .dir{color:var(--text);font-weight:600}
+.tree .new{color:#276749}
+.tree .del{color:#c53030;text-decoration:line-through}
+.tree .cm{color:var(--text3)}
+
+/* PERF TABLE */
+.perf-table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:1rem}
+.perf-table th{padding:.55rem .8rem;background:var(--surface2);border:1px solid var(--border);font-weight:600;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text3)}
+.perf-table td{padding:.6rem .8rem;border:1px solid var(--border);font-family:var(--mono);font-size:12px}
+.perf-table tr:hover td{background:var(--surface2)}
+.before{color:#c53030}.after{color:#276749;font-weight:600}
+
+/* TIMELINE */
+.timeline{position:relative;padding-left:2rem;margin-bottom:1.5rem}
+.timeline::before{content:'';position:absolute;left:.4rem;top:0;bottom:0;width:2px;background:var(--border2)}
+.tl-item{position:relative;margin-bottom:1.25rem}
+.tl-dot{position:absolute;left:-1.8rem;top:.3rem;width:14px;height:14px;border-radius:50%;border:2px solid var(--surface);box-shadow:0 0 0 2px var(--border2)}
+.tl-head{font-size:14px;font-weight:600;margin-bottom:.25rem}
+.tl-body{font-size:13px;color:var(--text2);line-height:1.6}
+
+/* STACK TABLE */
+.stack-table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:1rem}
+.stack-table th{padding:.55rem .8rem;background:var(--surface2);border:1px solid var(--border);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);text-align:left}
+.stack-table td{padding:.65rem .8rem;border:1px solid var(--border);vertical-align:top}
+.stack-table tr:hover td{background:var(--surface2)}
+.from-chip{font-family:var(--mono);font-size:11px;padding:2px 7px;border-radius:4px;background:#fff5f5;color:#c53030;border:1px solid #fed7d7;font-weight:600}
+.to-chip{font-family:var(--mono);font-size:11px;padding:2px 7px;border-radius:4px;background:#f0fff4;color:#276749;border:1px solid #c6f6d5;font-weight:600}
+.keep-chip{font-family:var(--mono);font-size:11px;padding:2px 7px;border-radius:4px;background:#ebf8ff;color:#2b6cb0;border:1px solid #bee3f8;font-weight:600}
+.arrow-sep{font-size:13px;color:var(--text3);margin:0 4px}
+
+/* DIVIDER */
+hr{border:none;border-top:1px solid var(--border);margin:2rem 0}
+
+/* TAGS */
+.tag{font-size:10px;padding:2px 7px;border-radius:4px;border:1px solid var(--border);color:var(--text2);background:var(--surface2)}
+.tag-row{display:flex;flex-wrap:wrap;gap:4px;margin-top:.4rem}
+
+/* SECURITY TABLE */
+.sec-table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:1rem}
+.sec-table th{padding:.55rem .8rem;background:var(--surface2);border:1px solid var(--border);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);text-align:left}
+.sec-table td{padding:.65rem .8rem;border:1px solid var(--border);vertical-align:top}
+.sec-table tr:hover td{background:var(--surface2)}
+.badge-crit{background:#fff5f5;color:#c53030;border:1px solid #fed7d7;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;text-transform:uppercase}
+.badge-high{background:#fffbeb;color:#b7791f;border:1px solid #fbd38d;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;text-transform:uppercase}
+.badge-med{background:#f7fafc;color:#718096;border:1px solid #e2e8f0;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;text-transform:uppercase}
+.badge-low{background:#f0fff4;color:#276749;border:1px solid #c6f6d5;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;text-transform:uppercase}
+
+/* PRINT */
+@media print{
+  .nav-outer,.nav{display:none}
+  .tab{display:block!important}
+  .page-wrap{max-width:100%;padding:1rem}
+  .section{break-inside:avoid}
+  body{font-size:12px}
+}
+</style>
+</head>
+<body>
+<div class="page-wrap">
+
+<!-- COVER -->
+<div class="cover">
+  <div class="cover-eyebrow">Engineering Implementation Guide</div>
+  <h1>SentinalScan<br><span>Implementation Guide</span></h1>
+  <p>Companion to the Upgrade Roadmap — complete code for the async migration, test strategy, CI/CD pipeline, security middleware, target project structure, and portfolio README template.</p>
+  <div class="cover-meta">
+    <span><strong>Tabs:</strong> 6 sections</span>
+    <span><strong>Scope:</strong> Phases 1–4 execution</span>
+    <span><strong>Stack:</strong>
+      <span class="pill" style="background:#ebf8ff;color:#2b6cb0">httpx</span>
+      <span class="pill" style="background:#f0fff4;color:#276749">asyncio</span>
+      <span class="pill" style="background:#faf5ff;color:#6b46c1">Celery</span>
+      <span class="pill" style="background:#e6fffa;color:#2c7a7b">Redis</span>
+      <span class="pill" style="background:#fffbeb;color:#b7791f">pytest</span>
+      <span class="pill" style="background:#ebf8ff;color:#2b6cb0">GH Actions</span>
+    </span>
+  </div>
+</div>
+
+<!-- NAV -->
+<div class="nav-outer">
+  <div class="nav-title">Jump to section</div>
+  <div class="nav">
+    <button class="nav-btn active" onclick="show('async',this)">Async migration</button>
+    <button class="nav-btn" onclick="show('testing',this)">Test strategy</button>
+    <button class="nav-btn" onclick="show('cicd',this)">CI/CD config</button>
+    <button class="nav-btn" onclick="show('security',this)">Security middleware</button>
+    <button class="nav-btn" onclick="show('structure',this)">Project structure</button>
+    <button class="nav-btn" onclick="show('readme',this)">README template</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ -->
+<!-- TAB 1: ASYNC MIGRATION                    -->
+<!-- ══════════════════════════════════════════ -->
+<div class="tab active" id="tab-async">
+
+<div class="callout danger">
+  <div class="callout-title">Critical invariant — never violate this</div>
+  Each sub-step must pass the full test suite independently. Never leave the codebase in a half-async state without a working test baseline. Execute sub-steps in sequence, one PR per step. If a sub-step causes test failures, stop and fix before proceeding.
+</div>
+
+<div class="section">
+  <div class="section-header">
+    <div class="section-icon" style="background:#ebf8ff;color:#185FA5">1</div>
+    <h2>Sub-step 1 — Swap HTTP client to httpx.Client (2 hrs)</h2>
+  </div>
+  <div class="prose">Replace <code>requests.Session</code> with <code>httpx.Client</code> (synchronous). Do <strong>not</strong> change the threading model yet. This validates the HTTP layer switch in isolation — all tests should pass unchanged. The APIs are ~95% compatible.</div>
+  <div class="code-wrap">
+    <div class="code-label">backend/crawler.py — step 1 diff</div>
+    <pre class="code"><span class="cm"># pip install httpx
+# requirements.in: replace requests>=2.31 with httpx>=0.27</span>
+
+<span class="ck">import</span> httpx  <span class="cm"># replaces: import requests</span>
+
+<span class="ck">class</span> <span class="cn">WebCrawler</span>:
+    <span class="ck">def</span> <span class="cn">_create_session</span>(self) -> httpx.Client:
+        <span class="ck">return</span> httpx.Client(
+            headers={<span class="cs">"User-Agent"</span>: self.config.user_agent},
+            verify=self.config.verify_ssl,
+            timeout=self.config.timeout,
+            follow_redirects=<span class="cv">True</span>,
+        )
+
+    <span class="ck">def</span> <span class="cn">crawl_page</span>(self, url: str):
+        <span class="ck">try</span>:
+            response = self.session.get(url)
+            response.raise_for_status()
+            links = self._extract_links(url, response.text)
+            <span class="ck">return</span> url, links, response.text, <span class="cv">True</span>
+        <span class="ck">except</span> httpx.HTTPStatusError <span class="ck">as</span> e:
+            <span class="ck">if</span> e.response.status_code == <span class="cv">429</span>:
+                self.rate_limiter.backoff()
+            <span class="ck">return</span> url, set(), <span class="cs">""</span>, <span class="cv">False</span>
+        <span class="ck">except</span> httpx.RequestError:
+            <span class="ck">return</span> url, set(), <span class="cs">""</span>, <span class="cv">False</span>
+
+<span class="cm"># Validation after this step:
+# pytest backend/tests/ -q  →  all pass, 0 failures
+# The only diff is the import and exception types</span></pre>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">
+    <div class="section-icon" style="background:#ebf8ff;color:#185FA5">2</div>
+    <h2>Sub-step 2 — Async crawl_page with AsyncClient (4 hrs)</h2>
+  </div>
+  <div class="prose">Convert <code>crawl_page()</code> to <code>async def</code> and switch to <code>httpx.AsyncClient</code>. Keep <code>VulnerabilityTester</code> fully synchronous. Run the async crawler from a sync context via <code>asyncio.run()</code> as a temporary bridge.</div>
+  <div class="code-wrap">
+    <div class="code-label">backend/crawler_async.py</div>
+    <pre class="code"><span class="ck">import</span> httpx, asyncio
+<span class="ck">from</span> selectolax.parser <span class="ck">import</span> HTMLParser
+
+<span class="ck">class</span> <span class="cn">AsyncWebCrawler</span>:
+    <span class="ck">async def</span> <span class="cn">__aenter__</span>(self):
+        self.client = httpx.AsyncClient(
+            headers={<span class="cs">"User-Agent"</span>: self.config.user_agent},
+            verify=self.config.verify_ssl,
+            timeout=self.config.timeout,
+            limits=httpx.Limits(
+                max_connections=self.config.workers * <span class="cv">2</span>,
+                max_keepalive_connections=self.config.workers,
+            ),
+            follow_redirects=<span class="cv">True</span>,
+        )
+        self.response_cache: dict[str, str] = {}
+        <span class="ck">return</span> self
+
+    <span class="ck">async def</span> <span class="cn">__aexit__</span>(self, *args):
+        <span class="ck">await</span> self.client.aclose()
+
+    <span class="ck">def</span> <span class="cn">_extract_links</span>(self, url: str, html: str) -> set[str]:
+        <span class="cm">"""selectolax is 5-10x faster than BeautifulSoup for this."""</span>
+        tree = HTMLParser(html)
+        links = set()
+        <span class="ck">for</span> node <span class="ck">in</span> tree.css(<span class="cs">"a[href], form[action]"</span>):
+            href = (node.attributes.get(<span class="cs">"href"</span>) <span class="ck">or</span>
+                    node.attributes.get(<span class="cs">"action"</span>, <span class="cs">""</span>))
+            <span class="ck">if</span> href <span class="ck">and</span> self._is_valid_link(url, href):
+                full = urljoin(url, href).split(<span class="cs">"#"</span>)[<span class="cv">0</span>]
+                links.add(full)
+        <span class="ck">return</span> links
+
+    <span class="ck">async def</span> <span class="cn">crawl_page</span>(self, url: str):
+        self.rate_limiter.wait()
+        <span class="ck">try</span>:
+            r = <span class="ck">await</span> self.client.get(url)
+            r.raise_for_status()
+            self.response_cache[url] = r.text
+            links = self._extract_links(url, r.text)
+            self.logger.info(<span class="cs">f"Crawled: {url} ({len(links)} links)"</span>)
+            <span class="ck">return</span> url, links, <span class="cv">True</span>
+        <span class="ck">except</span> Exception <span class="ck">as</span> e:
+            self.logger.debug(<span class="cs">f"Crawl failed {url}: {e}"</span>)
+            <span class="ck">return</span> url, set(), <span class="cv">False</span>
+
+    <span class="ck">async def</span> <span class="cn">crawl</span>(self) -> list[str]:
+        queue = asyncio.Queue()
+        <span class="ck">await</span> queue.put(self.base_url)
+        visited, pages = set(), []
+        sem = asyncio.Semaphore(self.config.workers)
+
+        <span class="ck">async def</span> <span class="cn">worker</span>():
+            <span class="ck">while True</span>:
+                url = <span class="ck">await</span> queue.get()
+                <span class="ck">try</span>:
+                    <span class="ck">if</span> url <span class="ck">in</span> visited <span class="ck">or</span> len(visited) >= self.config.max_pages:
+                        <span class="ck">return</span>
+                    visited.add(url)
+                    <span class="ck">async with</span> sem:
+                        _, links, ok = <span class="ck">await</span> self.crawl_page(url)
+                    <span class="ck">if</span> ok:
+                        pages.append(url)
+                        <span class="ck">for</span> lnk <span class="ck">in</span> links:
+                            <span class="ck">if</span> lnk <span class="ck">not in</span> visited:
+                                <span class="ck">await</span> queue.put(lnk)
+                <span class="ck">finally</span>:
+                    queue.task_done()
+
+        workers = [asyncio.create_task(worker())
+                   <span class="ck">for</span> _ <span class="ck">in range</span>(self.config.workers)]
+        <span class="ck">await</span> queue.join()
+        <span class="ck">for</span> w <span class="ck">in</span> workers: w.cancel()
+        <span class="ck">await</span> asyncio.gather(*workers, return_exceptions=<span class="cv">True</span>)
+        <span class="ck">return</span> pages
+
+
+<span class="cm"># Temporary sync bridge (removed in sub-step 4)</span>
+<span class="ck">def</span> <span class="cn">crawl_sync</span>(config, logger) -> list[str]:
+    <span class="ck">async def</span> <span class="cn">_run</span>():
+        <span class="ck">async with</span> AsyncWebCrawler(config, logger) <span class="ck">as</span> c:
+            <span class="ck">return await</span> c.crawl()
+    <span class="ck">return</span> asyncio.run(_run())</pre>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">
+    <div class="section-icon" style="background:#ebf8ff;color:#185FA5">3</div>
+    <h2>Sub-step 3 — Async vulnerability tester (6 hrs)</h2>
+  </div>
+  <div class="prose">Convert all test methods to <code>async def</code>. Replace <code>time.sleep()</code> with <code>await asyncio.sleep()</code> in time-based SQLi payloads. Use <code>asyncio.gather()</code> to run all tests for a page concurrently — this collapses per-page test time from worst-case-sum to worst-case-single.</div>
+  <div class="code-wrap">
+    <div class="code-label">backend/tester_async.py</div>
+    <pre class="code"><span class="ck">class</span> <span class="cn">AsyncVulnerabilityTester</span>:
+
+    <span class="ck">async def</span> <span class="cn">test_page</span>(self, url: str,
+                          cached_html: str | <span class="cv">None</span> = <span class="cv">None</span>):
+        <span class="cm"># Reuse crawl cache — no redundant HTTP request</span>
+        <span class="ck">if</span> cached_html <span class="ck">is None</span>:
+            r = <span class="ck">await</span> self.client.get(url)
+            cached_html, response = r.text, r
+        <span class="ck">else</span>:
+            response = MockResponse(cached_html)
+
+        forms = self._extract_forms(url, cached_html)
+        tasks = [
+            self.test_open_redirect(url),
+            self.test_path_traversal(url),
+            self.test_info_disclosure(url, cached_html),
+            self.test_security_headers(url, response),
+            self.test_cookie_security(url, response),
+            self.test_sensitive_files(url),
+            *[self._test_form(f, url) <span class="ck">for</span> f <span class="ck">in</span> forms],
+        ]
+        results = <span class="ck">await</span> asyncio.gather(*tasks, return_exceptions=<span class="cv">True</span>)
+        vulns = []
+        <span class="ck">for</span> r <span class="ck">in</span> results:
+            <span class="ck">if isinstance</span>(r, list): vulns.extend(r)
+            <span class="ck">elif isinstance</span>(r, Vulnerability): vulns.append(r)
+            <span class="ck">elif isinstance</span>(r, Exception):
+                self.logger.warning(<span class="cs">f"Test error on {url}: {r}"</span>)
+        <span class="ck">return</span> vulns
+
+    <span class="ck">async def</span> <span class="cn">_test_form</span>(self, form, url: str) -> list[Vulnerability]:
+        results = <span class="ck">await</span> asyncio.gather(
+            self.test_xss(form, url),
+            self.test_sqli(form, url),
+            self.test_csrf(form, url),
+            return_exceptions=<span class="cv">True</span>
+        )
+        <span class="ck">return</span> [r <span class="ck">for</span> r <span class="ck">in</span> results <span class="ck">if isinstance</span>(r, Vulnerability)]
+
+    <span class="ck">async def</span> <span class="cn">test_sqli</span>(self, form, url: str):
+        <span class="cm"># Baseline timing — async, does not block event loop</span>
+        t0 = asyncio.get_event_loop().time()
+        <span class="ck">await</span> self._submit_form(form, url, <span class="cs">"baseline_val"</span>)
+        baseline_time = asyncio.get_event_loop().time() - t0
+
+        <span class="cm"># Error-based (fast — no sleep)</span>
+        <span class="ck">for</span> payload, desc <span class="ck">in</span> self._SQLI_ERROR_PAYLOADS:
+            r = <span class="ck">await</span> self._submit_form(form, url, payload)
+            <span class="ck">if</span> r <span class="ck">and</span> self._has_sql_error(r.text):
+                <span class="ck">return</span> self._make_vuln(VulnType.SQLI, url, desc)
+
+        <span class="cm"># Time-based — await asyncio.sleep() instead of time.sleep()
+        # This releases the event loop while waiting, allowing other
+        # tests to run concurrently</span>
+        <span class="ck">for</span> payload <span class="ck">in</span> self._SQLI_TIME_PAYLOADS:
+            t1 = asyncio.get_event_loop().time()
+            <span class="ck">await</span> self._submit_form(form, url, payload)
+            elapsed = asyncio.get_event_loop().time() - t1
+            <span class="ck">if</span> elapsed > baseline_time + MIN_TIME_DELAY_DETECTION:
+                <span class="ck">return</span> self._make_time_based_vuln(url, elapsed, baseline_time)
+        <span class="ck">return None</span>
+
+    <span class="ck">async def</span> <span class="cn">test_sensitive_files</span>(self, url: str) -> list[Vulnerability]:
+        <span class="cm"># 8 files probed concurrently instead of sequentially</span>
+        tasks = [self._probe_file(url, f) <span class="ck">for</span> f <span class="ck">in</span> self._SENSITIVE_FILES]
+        results = <span class="ck">await</span> asyncio.gather(*tasks, return_exceptions=<span class="cv">True</span>)
+        <span class="ck">return</span> [r <span class="ck">for</span> r <span class="ck">in</span> results <span class="ck">if isinstance</span>(r, Vulnerability)]</pre>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">
+    <div class="section-icon" style="background:#ebf8ff;color:#185FA5">4</div>
+    <h2>Sub-step 4 — Full async pipeline, remove ThreadPoolExecutor (4 hrs)</h2>
+  </div>
+  <div class="prose">Wire <code>VulnerabilityScanner.scan()</code> to <code>asyncio.run()</code>. Remove all manual thread management. The Celery task wrapper becomes the only threading boundary in the system.</div>
+  <div class="code-wrap">
+    <div class="code-label">backend/vuln_scanner.py — final async scan()</div>
+    <pre class="code"><span class="ck">class</span> <span class="cn">VulnerabilityScanner</span>:
+
+    <span class="ck">async def</span> <span class="cn">scan</span>(self) -> list[Vulnerability]:
+        self._verify_authorization()
+        self._validate_target()
+        self.start_time = asyncio.get_event_loop().time()
+        self.logger.info(<span class="cs">"="</span>*<span class="cv">60</span>)
+        self.logger.info(<span class="cs">"VULNERABILITY SCAN STARTED"</span>)
+        self.logger.info(<span class="cs">f"Target: {self.config.target_url}"</span>)
+        self.logger.info(<span class="cs">"="</span>*<span class="cv">60</span>)
+        <span class="ck">await</span> self._phase_crawl()
+        <span class="ck">await</span> self._phase_test()
+        self._deduplicate_vulnerabilities()
+        self._emit_summary()
+        <span class="ck">return</span> self.vulnerabilities
+
+    <span class="ck">async def</span> <span class="cn">_phase_crawl</span>(self):
+        self.logger.info(<span class="cs">"[PHASE 1] Crawling"</span>)
+        <span class="ck">async with</span> AsyncWebCrawler(self.config, self.logger) <span class="ck">as</span> crawler:
+            self.pages = <span class="ck">await</span> crawler.crawl()
+            self._page_cache = crawler.response_cache
+        self.logger.info(<span class="cs">f"Crawl complete: {len(self.pages)} pages"</span>)
+
+    <span class="ck">async def</span> <span class="cn">_phase_test</span>(self):
+        self.logger.info(<span class="cs">f"[PHASE 2] Testing {len(self.pages)} pages"</span>)
+        <span class="ck">async with</span> httpx.AsyncClient(
+            verify=self.config.verify_ssl,
+            timeout=self.config.timeout,
+        ) <span class="ck">as</span> client:
+            tester = AsyncVulnerabilityTester(client, self.config, self.logger)
+            coros = [
+                tester.test_page(p, self._page_cache.get(p))
+                <span class="ck">for</span> p <span class="ck">in</span> self.pages
+                <span class="ck">if</span> self._scan_active
+            ]
+            results = <span class="ck">await</span> asyncio.gather(*coros, return_exceptions=<span class="cv">True</span>)
+            <span class="ck">for</span> r <span class="ck">in</span> results:
+                <span class="ck">if isinstance</span>(r, list):
+                    self.vulnerabilities.extend(r)
+
+    <span class="ck">def</span> <span class="cn">_emit_summary</span>(self):
+        duration = asyncio.get_event_loop().time() - self.start_time
+        self.logger.info(<span class="cs">f"Scan complete in {duration:.1f}s — "
+                         f"{len(self.vulnerabilities)} findings"</span>)
+
+
+<span class="cm"># backend/tasks.py — Celery is the ONLY threading boundary</span>
+<span class="ck">from</span> celery <span class="ck">import</span> Celery
+celery = Celery(<span class="cs">"sentinal"</span>, broker=os.environ[<span class="cs">"REDIS_URL"</span>],
+                backend=os.environ[<span class="cs">"REDIS_URL"</span>])
+
+@celery.task(bind=<span class="cv">True</span>, max_retries=<span class="cv">0</span>)
+<span class="ck">def</span> <span class="cn">run_scan_task</span>(self, scan_id: str, config_dict: dict):
+    loop = asyncio.new_event_loop()
+    <span class="ck">try</span>:
+        config = ScanConfig(**config_dict)
+        scanner = VulnerabilityScanner(
+            config, logger=RedisPublishLogger(scan_id))
+        vulns = loop.run_until_complete(scanner.scan())
+        loop.run_until_complete(store.save_results(scan_id, vulns))
+        loop.run_until_complete(store.set_status(scan_id, <span class="cs">"complete"</span>))
+    <span class="ck">except</span> Exception <span class="ck">as</span> e:
+        loop.run_until_complete(store.set_status(scan_id, <span class="cs">"failed"</span>, str(e)))
+        <span class="ck">raise</span>
+    <span class="ck">finally</span>:
+        loop.close()  <span class="cm"># always — no leaked event loops</span></pre>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">
+    <div class="section-icon" style="background:#f0fff4;color:#276749">📊</div>
+    <h2>Performance targets — validate after sub-step 4</h2>
+  </div>
+  <table class="perf-table">
+    <thead><tr><th>Metric</th><th>Before (baseline)</th><th>Target (post-async)</th><th>Measure with</th></tr></thead>
+    <tbody>
+      <tr><td>Crawl 50 pages, 5 workers</td><td class="before">~90s sequential</td><td class="after">&lt;20s concurrent</td><td style="font-family:var(--mono);font-size:11px">time asyncio.run(crawler.crawl())</td></tr>
+      <tr><td>SQLi time-based, 3 forms</td><td class="before">~27s sequential</td><td class="after">&lt;9s concurrent</td><td style="font-family:var(--mono);font-size:11px">pytest --benchmark-only</td></tr>
+      <tr><td>Sensitive file probe (8 files)</td><td class="before">~12s sequential</td><td class="after">&lt;3s concurrent</td><td style="font-family:var(--mono);font-size:11px">pytest --benchmark-only</td></tr>
+      <tr><td>API response to /scan/start</td><td class="before">blocks until done</td><td class="after">&lt;50ms enqueue</td><td style="font-family:var(--mono);font-size:11px">curl -w "%{time_total}"</td></tr>
+      <tr><td>Memory per Celery worker</td><td class="before">unbounded</td><td class="after">&lt;256 MB</td><td style="font-family:var(--mono);font-size:11px">docker stats</td></tr>
+    </tbody>
+  </table>
+</div>
+
+</div><!-- /tab-async -->
+
+
+<!-- ══════════════════════════════════════════ -->
+<!-- TAB 2: TESTING                            -->
+<!-- ══════════════════════════════════════════ -->
+<div class="tab" id="tab-testing">
+
+<div class="callout warn">
+  <div class="callout-title">Prioritization strategy</div>
+  With zero tests today, write in risk order, not coverage order. An SSRF validation test that catches a critical security regression is worth 50 UI snapshot tests. Target: 70% line coverage before Phase 3 begins.
+</div>
+
+<div class="section">
+  <div class="section-header">
+    <div class="section-icon" style="background:#fff5f5;color:#c53030">T1</div>
+    <h2>Tier 1 — Highest regression risk (write first)</h2>
+  </div>
+  <div class="step-list">
+    <div class="step">
+      <div class="step-num" style="background:#fff5f5;color:#c53030">1</div>
+      <div>
+        <div class="step-head">SSRF blocklist validation</div>
+        <div class="step-desc">Most critical. Verifies the security boundary cannot be bypassed. If these tests regress, the tool becomes a weapon against internal infrastructure.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num" style="background:#fff5f5;color:#c53030">2</div>
+      <div>
+        <div class="step-head">Scan state lifecycle — is_scanning always resets</div>
+        <div class="step-desc">The original bug: exceptions leave is_scanning=True forever. This test verifies the try/finally guard works under failure conditions.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num" style="background:#fffbeb;color:#b7791f">3</div>
+      <div>
+        <div class="step-head">Deduplication correctness</div>
+        <div class="step-desc">Without dedup tests, a refactor could silently produce 10× the expected findings. Test both identical-fingerprint removal and URL-distinct preservation.</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num" style="background:#fffbeb;color:#b7791f">4</div>
+      <div>
+        <div class="step-head">URL parsing edge cases</div>
+        <div class="step-desc">Malformed URLs, IPv6 addresses, and URLs with embedded credentials can all bypass the blocklist if not explicitly tested.</div>
+      </div>
+    </div>
+  </div>
+  <div class="code-wrap">
+    <div class="code-label">tests/test_validation.py</div>
+    <pre class="code"><span class="ck">import</span> pytest
+<span class="ck">from</span> backend.vuln_scanner <span class="ck">import</span> ScanConfig, VulnerabilityScanner
+
+<span class="cv">SSRF_CASES</span> = [
+    (<span class="cs">"http://192.168.1.1"</span>,          <span class="cs">"RFC-1918 class C"</span>),
+    (<span class="cs">"http://10.0.0.1"</span>,             <span class="cs">"RFC-1918 class A"</span>),
+    (<span class="cs">"http://172.16.0.1"</span>,           <span class="cs">"RFC-1918 class B"</span>),
+    (<span class="cs">"http://169.254.169.254/"</span>,      <span class="cs">"AWS metadata endpoint"</span>),
+    (<span class="cs">"http://localhost"</span>,             <span class="cs">"localhost string"</span>),
+    (<span class="cs">"http://127.0.0.1"</span>,            <span class="cs">"loopback numeric"</span>),
+    (<span class="cs">"http://[::1]"</span>,                <span class="cs">"IPv6 loopback"</span>),
+]
+
+@pytest.mark.parametrize(<span class="cs">"url,label"</span>, SSRF_CASES)
+<span class="ck">def</span> <span class="cn">test_ssrf_blocked</span>(url, label):
+    config = ScanConfig(target_url=url, skip_auth_check=<span class="cv">True</span>)
+    s = VulnerabilityScanner.__new__(VulnerabilityScanner)
+    s.config, s.logger = config, MockLogger()
+    <span class="ck">with</span> pytest.raises(ValueError, match=<span class="cs">"blocked"</span>):
+        s._validate_target()
+
+<span class="ck">def</span> <span class="cn">test_valid_url_passes</span>():
+    config = ScanConfig(target_url=<span class="cs">"https://example.com"</span>, skip_auth_check=<span class="cv">True</span>)
+    s = VulnerabilityScanner.__new__(VulnerabilityScanner)
+    s.config, s.logger = config, MockLogger()
+    s._validate_target()  <span class="cm"># must not raise</span>
+
+<span class="ck">def</span> <span class="cn">test_scan_active_false_after_exception</span>():
+    <span class="cs">"""is_scanning must NEVER remain True on scan failure."""</span>
+    session = ScanSession(scan_id=<span class="cs">"test-id"</span>, is_scanning=<span class="cv">True</span>)
+    <span class="ck">try</span>:
+        <span class="ck">raise</span> RuntimeError(<span class="cs">"simulated crash"</span>)
+    <span class="ck">except</span>:
+        pass
+    <span class="ck">finally</span>:
+        session.is_scanning = <span class="cv">False</span>  <span class="cm"># the fix we're testing</span>
+    <span class="ck">assert not</span> session.is_scanning
+
+<span class="ck">def</span> <span class="cn">test_dedup_removes_identical_fingerprints</span>():
+    make = <span class="ck">lambda</span> url: Vulnerability(
+        url=url, vuln_type=<span class="cs">"XSS"</span>, description=<span class="cs">"test"</span>,
+        severity_score=<span class="cv">7.0</span>, severity_level=<span class="cs">"High"</span>, severity_icon=<span class="cs">"🟠"</span>,
+        evidence=<span class="cs">"e"</span>, timestamp=<span class="cv">0</span>, remediation=<span class="cs">"r"</span>, confidence=<span class="cs">"High"</span>)
+
+    s = VulnerabilityScanner.__new__(VulnerabilityScanner)
+    s.vulnerabilities = [
+        make(<span class="cs">"https://x.com/a"</span>),
+        make(<span class="cs">"https://x.com/a"</span>),  <span class="cm"># exact duplicate — must be removed</span>
+        make(<span class="cs">"https://x.com/b"</span>),  <span class="cm"># different URL — must be kept</span>
+    ]
+    s._deduplicate_vulnerabilities()
+    <span class="ck">assert</span> len(s.vulnerabilities) == <span class="cv">2</span></pre>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">
+    <div class="section-icon" style="background:#fffbeb;color:#b7791f">T2</div>
+    <h2>Tier 2 — Mock-based HTTP detection tests</h2>
+  </div>
+  <div class="prose">Use <code>respx</code> to intercept <code>httpx</code> calls at the transport layer. No network required — safe in CI. Test both the positive case (vulnerability detected) and the negative case (no false positive on clean input).</div>
+  <div class="code-wrap">
+    <div class="code-label">tests/test_xss.py</div>
+    <pre class="code"><span class="ck">import</span> respx, httpx, pytest
+<span class="ck">from</span> pytest <span class="ck">import</span> mark
+
+<span class="cv">XSS_PAYLOADS</span> = [
+    (<span class="cs">"&lt;script&gt;alert('XSS')&lt;/script&gt;"</span>,   <span class="cs">"script tag"</span>),
+    (<span class="cs">"&lt;img src=x onerror=alert(1)&gt;"</span>,     <span class="cs">"img onerror"</span>),
+    (<span class="cs">"&lt;svg onload=alert(1)&gt;"</span>,            <span class="cs">"svg onload"</span>),
+    (<span class="cs">"'&gt;&lt;script&gt;alert(1)&lt;/script&gt;"</span>,  <span class="cs">"quote break"</span>),
+]
+
+@mark.parametrize(<span class="cs">"payload,desc"</span>, XSS_PAYLOADS)
+@respx.mock
+@mark.asyncio
+<span class="ck">async def</span> <span class="cn">test_xss_reflected_detected</span>(payload, desc, config):
+    form_html = (<span class="cs">'&lt;html&gt;&lt;form method="post" action="/search"&gt;'</span>
+                 <span class="cs">'&lt;input name="q"&gt;&lt;/form&gt;&lt;/html&gt;'</span>)
+    respx.get(<span class="cs">"https://t.test/search"</span>).mock(
+        return_value=httpx.Response(<span class="cv">200</span>, text=form_html))
+    respx.post(<span class="cs">"https://t.test/search"</span>).mock(
+        return_value=httpx.Response(<span class="cv">200</span>,
+            text=<span class="cs">f"&lt;html&gt;&lt;body&gt;Results: {payload}&lt;/body&gt;&lt;/html&gt;"</span>))
+
+    <span class="ck">async with</span> httpx.AsyncClient() <span class="ck">as</span> client:
+        tester = AsyncVulnerabilityTester(client, config, MockLogger())
+        forms = tester._extract_forms(<span class="cs">"https://t.test/search"</span>, form_html)
+        result = <span class="ck">await</span> tester.test_xss(forms[<span class="cv">0</span>], <span class="cs">"https://t.test/search"</span>)
+
+    <span class="ck">assert</span> result <span class="ck">is not None</span>, <span class="cs">f"XSS not detected for {desc}"</span>
+    <span class="ck">assert</span> result.vuln_type == VulnType.XSS.value
+    <span class="ck">assert</span> result.confidence == <span class="cs">"High"</span>
+    <span class="ck">assert</span> result.severity_level == <span class="cs">"High"</span>
+
+@respx.mock
+@mark.asyncio
+<span class="ck">async def</span> <span class="cn">test_xss_no_false_positive_on_clean_page</span>(config):
+    <span class="cs">"""Critical: must not fire on pages that encode output correctly."""</span>
+    respx.get(<span class="cs">"https://t.test/"</span>).mock(
+        return_value=httpx.Response(<span class="cv">200</span>, text=<span class="cs">"&lt;html&gt;Clean&lt;/html&gt;"</span>))
+    respx.post(<span class="cs">"https://t.test/"</span>).mock(
+        return_value=httpx.Response(<span class="cv">200</span>,
+            text=<span class="cs">"&lt;html&gt;&lt;body&gt;&amp;lt;script&amp;gt; — encoded&lt;/body&gt;&lt;/html&gt;"</span>))
+    <span class="ck">async with</span> httpx.AsyncClient() <span class="ck">as</span> client:
+        tester = AsyncVulnerabilityTester(client, config, MockLogger())
+        result = <span class="ck">await</span> tester.test_xss(mock_form, <span class="cs">"https://t.test/"</span>)
+    <span class="ck">assert</span> result <span class="ck">is None</span>, <span class="cs">"False positive: XSS fired on encoded output"</span></pre>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">
+    <div class="section-icon" style="background:#e6fffa;color:#2c7a7b">T3</div>
+    <h2>Tier 3 — Integration against vulnerable fixture app</h2>
+  </div>
+  <div class="prose">A minimal Starlette app that intentionally returns vulnerable responses. Run the full async scanner against it in CI to catch integration regressions that unit tests miss.</div>
+  <div class="code-wrap">
+    <div class="code-label">tests/fixtures/vulnerable_app.py</div>
+    <pre class="code"><span class="ck">from</span> starlette.applications <span class="ck">import</span> Starlette
+<span class="ck">from</span> starlette.responses <span class="ck">import</span> HTMLResponse
+<span class="ck">from</span> starlette.routing <span class="ck">import</span> Route
+
+<span class="ck">async def</span> <span class="cn">search</span>(request):
+    q = request.query_params.get(<span class="cs">"q"</span>, <span class="cs">""</span>)
+    <span class="ck">return</span> HTMLResponse(
+        <span class="cs">f"""&lt;html&gt;
+        &lt;head&gt;&lt;/head&gt;
+        &lt;body&gt;
+          &lt;form method="post" action="/search"&gt;
+            &lt;input name="q" value="{q}"&gt;
+          &lt;/form&gt;
+          Results for: {q}
+        &lt;/body&gt;&lt;/html&gt;"""</span>)  <span class="cm"># intentionally unescaped — XSS</span>
+
+<span class="ck">async def</span> <span class="cn">db_search</span>(request):
+    q = request.query_params.get(<span class="cs">"id"</span>, <span class="cs">""</span>)
+    <span class="ck">if</span> <span class="cs">"'"</span> <span class="ck">in</span> q:
+        <span class="ck">return</span> HTMLResponse(
+            <span class="cs">"You have an error in your SQL syntax near 'id=1'';"</span>
+            <span class="cs">"check the manual for MySQL server version 8.0"</span>)
+    <span class="ck">return</span> HTMLResponse(<span class="cs">"Result: found"</span>)
+
+app = Starlette(routes=[
+    Route(<span class="cs">"/search"</span>, search, methods=[<span class="cs">"GET"</span>,<span class="cs">"POST"</span>]),
+    Route(<span class="cs">"/db"</span>, db_search),
+])
+
+<span class="cm"># tests/test_integration.py</span>
+@pytest.mark.integration
+@pytest.mark.asyncio
+<span class="ck">async def</span> <span class="cn">test_full_scan_detects_expected_vulns</span>(vuln_server_url):
+    config = ScanConfig(
+        target_url=vuln_server_url,
+        max_pages=<span class="cv">5</span>,
+        skip_auth_check=<span class="cv">True</span>
+    )
+    scanner = VulnerabilityScanner(config)
+    vulns = <span class="ck">await</span> scanner.scan()
+    types = {v.vuln_type <span class="ck">for</span> v <span class="ck">in</span> vulns}
+
+    <span class="ck">assert</span> VulnType.XSS.value <span class="ck">in</span> types, <span class="cs">"XSS not detected"</span>
+    <span class="ck">assert</span> VulnType.SQLI.value <span class="ck">in</span> types, <span class="cs">"SQLi not detected"</span>
+    <span class="ck">assert</span> VulnType.SECURITY_HEADERS.value <span class="ck">in</span> types, <span class="cs">"Missing headers not detected"</span>
+    <span class="ck">assert</span> len(vulns) > <span class="cv">0</span></pre>
+  </div>
+</div>
+
+</div><!-- /tab-testing -->
+
+
+<!-- ══════════════════════════════════════════ -->
+<!-- TAB 3: CI/CD                              -->
+<!-- ══════════════════════════════════════════ -->
+<div class="tab" id="tab-cicd">
+
+<div class="section">
+  <div class="section-header">
+    <div class="section-icon" style="background:#e6fffa;color:#2c7a7b">🔁</div>
+    <h2>GitHub Actions — complete CI pipeline</h2>
+  </div>
+  <div class="code-wrap">
+    <div class="code-label">.github/workflows/ci.yml</div>
+    <pre class="code">name: CI
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend — lint · security · test
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install -r backend/requirements.txt
+          pip install pytest pytest-asyncio pytest-cov respx \
+                      ruff bandit pip-audit pip-tools
+
+      - name: Lint (ruff)
+        run: ruff check backend/
+
+      - name: Security lint (bandit)
+        run: bandit -r backend/ -ll -x backend/tests/
+
+      - name: CVE check (pip-audit)
+        run: pip-audit --require-hashes -r backend/requirements.txt
+
+      - name: Requirements lockfile current
+        run: |
+          pip-compile backend/requirements.in --dry-run --quiet || \
+            (echo "requirements.txt is out of date. Run pip-compile." && exit 1)
+
+      - name: Run tests
+        env:
+          SENTINAL_API_KEY: test-key-ci
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: test-jwt-secret-32-chars-minimum!
+        run: |
+          pytest backend/tests/ \
+            --cov=backend \
+            --cov-report=xml \
+            --cov-report=term-missing \
+            --cov-fail-under=70 \
+            -v --tb=short
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage.xml
+          fail_ci_if_error: false
+
+
+  frontend:
+    name: Frontend — lint · audit · build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        run: cd frontend && npm ci
+
+      - name: Lint
+        run: cd frontend && npm run lint
+
+      - name: Security audit
+        run: cd frontend && npm audit --audit-level=high
+
+      - name: Build
+        run: cd frontend && npm run build
+        env:
+          VITE_API_BASE: http://localhost:8000
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist-${{ github.sha }}
+          path: frontend/dist/
+          retention-days: 7
+
+
+  docker:
+    name: Docker build check
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build API image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: false
+          tags: sentinalscan/api:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build Worker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile.worker
+          push: false
+          tags: sentinalscan/worker:${{ github.sha }}</pre>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">
+    <div class="section-icon" style="background:#faf5ff;color:#6b46c1">🚀</div>
+    <h2>Release workflow — tags push to Docker + Helm</h2>
+  </div>
+  <div class="code-wrap">
+    <div class="code-label">.github/workflows/release.yml</div>
+    <pre class="code">name: Release
+on:
+  push:
+    tags: ['v*.*.*']
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build and push API
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/api:${{ github.ref_name }}
+            ghcr.io/${{ github.repository }}/api:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push Worker
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile.worker
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/worker:${{ github.ref_name }}
+            ghcr.io/${{ github.repository }}/worker:latest
+
+      - name: Package Helm chart
+        run: helm package helm/sentinalscan --version ${{ github.ref_name }}
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v1
+        with:
+          generate_release_notes: true
+          files: sentinalscan-*.tgz</pre>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">
+    <div class="section-icon" style="background:#f0fff4;color:#276749">📦</div>
+    <h2>Dependabot auto-updates</h2>
+  </div>
+  <div class="code-wrap">
+    <div class="code-label">.github/dependabot.yml</div>
+    <pre class="code">version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /backend
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      python-deps:
+        patterns: ["*"]
+    reviewers: [your-username]
+    labels: [dependencies, python]
+
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      npm-deps:
+        patterns: ["*"]
+    labels: [dependencies, javascript]
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: monthly
+    labels: [dependencies, docker]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    labels: [dependencies, github-actions]</pre>
+  </div>
+</div>
+
+</div><!-- /tab-cicd -->
+
+
+<!-- ══════════════════════════════════════════ -->
+<!-- TAB 4: SECURITY MIDDLEWARE                -->
+<!-- ══════════════════════════════════════════ -->
+<div class="tab" id="tab-security">
+
+<div class="callout danger">
+  <div class="callout-title">All three items below are Phase 1 — implement before anything else</div>
+  Security middleware, Pydantic validators, and log sanitization must land in the same PR as the API key auth fix. They work together as a single hardening layer.
+</div>
+
+<div class="section">
+  <div class="section-header">
+    <div class="section-icon" style="background:#fff5f5;color:#c53030">🔒</div>
+    <h2>Security headers middleware</h2>
+  </div>
+  <div class="prose">Removes stack fingerprinting headers (<code>Server</code>, <code>X-Powered-By</code>) and adds defensive response headers on every API response. Register after the CORS middleware in <code>api.py</code>.</div>
+  <div class="code-wrap">
+    <div class="code-label">backend/middleware.py</div>
+    <pre class="code"><span class="ck">from</span> starlette.middleware.base <span class="ck">import</span> BaseHTTPMiddleware
+<span class="ck">from</span> starlette.requests <span class="ck">import</span> Request
+<span class="ck">import</span> re, html
+
+<span class="ck">class</span> <span class="cn">SecurityHeadersMiddleware</span>(BaseHTTPMiddleware):
+    <span class="cs">"""Add defensive headers and strip stack fingerprints."""</span>
+    <span class="ck">async def</span> <span class="cn">dispatch</span>(self, request: Request, call_next):
+        response = <span class="ck">await</span> call_next(request)
+        h = response.headers
+        h[<span class="cs">"X-Content-Type-Options"</span>] = <span class="cs">"nosniff"</span>
+        h[<span class="cs">"X-Frame-Options"</span>]       = <span class="cs">"DENY"</span>
+        h[<span class="cs">"Referrer-Policy"</span>]       = <span class="cs">"no-referrer"</span>
+        h[<span class="cs">"Permissions-Policy"</span>]    = <span class="cs">"camera=(), microphone=(), geolocation=()"</span>
+        h[<span class="cs">"X-XSS-Protection"</span>]      = <span class="cs">"0"</span>  <span class="cm"># modern browsers: disable the broken XSS auditor</span>
+        h.pop(<span class="cs">"server"</span>, <span class="cv">None</span>)         <span class="cm"># removes "uvicorn" fingerprint</span>
+        h.pop(<span class="cs">"x-powered-by"</span>, <span class="cv">None</span>)
+        <span class="ck">return</span> response
+
+
+<span class="ck">class</span> <span class="cn">SensitiveDataSanitizer</span>(BaseHTTPMiddleware):
+    <span class="cs">"""Mask secrets from any data that might appear in logs."""</span>
+    <span class="cv">_MASK</span> = re.compile(
+        r<span class="cs">'("(?:auth_token|password|cookie|secret)[^"]*":\s*")([^"]+)(")'</span>,
+        re.IGNORECASE)
+
+    @classmethod
+    <span class="ck">def</span> <span class="cn">sanitize</span>(cls, text: str) -> str:
+        <span class="ck">return</span> cls._MASK.sub(<span class="cs">r'\1[REDACTED]\3'</span>, text)
+
+    <span class="ck">async def</span> <span class="cn">dispatch</span>(self, request: Request, call_next):
+        <span class="ck">return await</span> call_next(request)
+
+
+<span class="cm"># backend/api.py — register in order</span>
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[<span class="cs">"http://localhost:5173"</span>],  <span class="cm"># NOT ["*"] in production</span>
+    allow_credentials=<span class="cv">True</span>,
+    allow_methods=[<span class="cs">"GET"</span>, <span class="cs">"POST"</span>],
+    allow_headers=[<span class="cs">"Content-Type"</span>, <span class="cs">"X-API-Key"</span>],
+)
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(SensitiveDataSanitizer)</pre>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">
+    <div class="section-icon" style="background:#fff5f5;color:#c53030">✅</div>
+    <h2>Pydantic v2 field validators</h2>
+  </div>
+  <div class="prose">Validates all scan parameters at the API boundary before any scan logic runs. Invalid requests get a <code>422 Unprocessable Entity</code> with a clear error message.</div>
+  <div class="code-wrap">
+    <div class="code-label">backend/models.py</div>
+    <pre class="code"><span class="ck">from</span> pydantic <span class="ck">import</span> BaseModel, field_validator, AnyHttpUrl
+<span class="ck">from</span> typing <span class="ck">import</span> Optional
+
+<span class="ck">class</span> <span class="cn">ScanRequest</span>(BaseModel):
+    target_url:        AnyHttpUrl
+    max_pages:         int  = <span class="cv">50</span>
+    workers:           int  = <span class="cv">5</span>
+    timeout:           int  = <span class="cv">15</span>
+    verify_ssl:        bool = <span class="cv">True</span>
+    obey_robots:       bool = <span class="cv">True</span>
+    use_browser:       bool = <span class="cv">False</span>
+    auth_token:        Optional[str] = <span class="cv">None</span>
+    cookies_str:       Optional[str] = <span class="cv">None</span>
+    headers_str:       Optional[str] = <span class="cv">None</span>
+    exclude_paths_str: Optional[str] = <span class="cv">None</span>
+
+    @field_validator(<span class="cs">"target_url"</span>, mode=<span class="cs">"before"</span>)
+    @classmethod
+    <span class="ck">def</span> <span class="cn">validate_scheme</span>(cls, v) -> str:
+        s = str(v)
+        <span class="ck">if not</span> s.startswith((<span class="cs">"http://"</span>, <span class="cs">"https://"</span>)):
+            <span class="ck">raise</span> ValueError(<span class="cs">"Only http:// and https:// are supported"</span>)
+        <span class="ck">return</span> s
+
+    @field_validator(<span class="cs">"max_pages"</span>)
+    @classmethod
+    <span class="ck">def</span> <span class="cn">validate_max_pages</span>(cls, v: int) -> int:
+        <span class="ck">if not</span> <span class="cv">1</span> <= v <= <span class="cv">500</span>:
+            <span class="ck">raise</span> ValueError(<span class="cs">f"max_pages must be 1–500, got {v}"</span>)
+        <span class="ck">return</span> v
+
+    @field_validator(<span class="cs">"workers"</span>)
+    @classmethod
+    <span class="ck">def</span> <span class="cn">validate_workers</span>(cls, v: int) -> int:
+        <span class="ck">if not</span> <span class="cv">1</span> <= v <= <span class="cv">20</span>:
+            <span class="ck">raise</span> ValueError(<span class="cs">f"workers must be 1–20, got {v}"</span>)
+        <span class="ck">return</span> v
+
+    @field_validator(<span class="cs">"timeout"</span>)
+    @classmethod
+    <span class="ck">def</span> <span class="cn">validate_timeout</span>(cls, v: int) -> int:
+        <span class="ck">if not</span> <span class="cv">5</span> <= v <= <span class="cv">120</span>:
+            <span class="ck">raise</span> ValueError(<span class="cs">f"timeout must be 5–120s, got {v}"</span>)
+        <span class="ck">return</span> v</pre>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">
+    <div class="section-icon" style="background:#fff5f5;color:#c53030">🧹</div>
+    <h2>Log payload sanitization</h2>
+  </div>
+  <div class="prose">XSS payloads flow from the scanner into the WebSocket log stream. Sanitize HTML special characters before pub/sub to prevent reflected payloads appearing in the operator's browser. This is defense-in-depth — React's JSX currently escapes these, but sanitizing at the source removes the risk permanently.</div>
+  <div class="code-wrap">
+    <div class="code-label">backend/logger.py</div>
+    <pre class="code"><span class="ck">import</span> html, re, asyncio, time, os
+
+<span class="cv">_DANGEROUS</span> = re.compile(r<span class="cs">'[&lt;&gt;&amp;"\'`]'</span>)
+
+<span class="ck">def</span> <span class="cn">sanitize_log_message</span>(msg: str) -> str:
+    <span class="cs">"""Escape HTML-special chars from scan payloads before streaming."""</span>
+    <span class="ck">return</span> _DANGEROUS.sub(
+        <span class="ck">lambda</span> m: html.escape(m.group(), quote=<span class="cv">True</span>), msg)
+
+
+<span class="ck">class</span> <span class="cn">RedisPublishLogger</span>:
+    <span class="cs">"""Async-safe logger that publishes to Redis pub/sub."""</span>
+
+    <span class="ck">def</span> <span class="cn">__init__</span>(self, scan_id: str):
+        self.scan_id = scan_id
+        self.verbose = <span class="cv">True</span>
+
+    <span class="ck">def</span> <span class="cn">_log</span>(self, level: str, msg: str):
+        safe_msg = sanitize_log_message(str(msg))
+        entry = {
+            <span class="cs">"timestamp"</span>: time.time(),
+            <span class="cs">"level"</span>: level,
+            <span class="cs">"message"</span>: safe_msg,
+            <span class="cs">"scan_id"</span>: self.scan_id,
+        }
+        <span class="cm"># Publish without blocking the calling thread</span>
+        <span class="ck">if</span> loop <span class="ck">is not None and not</span> loop.is_closed():
+            asyncio.run_coroutine_threadsafe(
+                store.publish_log(self.scan_id, entry), loop
+            )
+
+    <span class="ck">def</span> <span class="cn">info</span>(self, msg):    self._log(<span class="cs">"INFO"</span>, msg)
+    <span class="ck">def</span> <span class="cn">warning</span>(self, msg): self._log(<span class="cs">"WARNING"</span>, msg)
+    <span class="ck">def</span> <span class="cn">error</span>(self, msg):   self._log(<span class="cs">"ERROR"</span>, msg)
+    <span class="ck">def</span> <span class="cn">debug</span>(self, msg):   self._log(<span class="cs">"DEBUG"</span>, msg)
+    <span class="ck">def</span> <span class="cn">critical</span>(self, msg): self._log(<span class="cs">"CRITICAL"</span>, msg)</pre>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">
+    <div class="section-icon" style="background:#fff5f5;color:#c53030">🔑</div>
+    <h2>Security findings summary</h2>
+  </div>
+  <table class="sec-table">
+    <thead><tr><th>Finding</th><th>Severity</th><th>File</th><th>Fix</th></tr></thead>
+    <tbody>
+      <tr><td>No API authentication</td><td><span class="badge-crit">Critical</span></td><td><code>api.py</code></td><td>X-API-Key header Depends() guard on all routes</td></tr>
+      <tr><td>SSRF via target URL</td><td><span class="badge-crit">Critical</span></td><td><code>_validate_target()</code></td><td>Hard-reject RFC-1918 + metadata CIDRs before any request</td></tr>
+      <tr><td>Asyncio loop race condition</td><td><span class="badge-high">High</span></td><td><code>WebSocketLogger</code></td><td>None guard + loop.is_closed() check before run_coroutine_threadsafe</td></tr>
+      <tr><td>XSS payloads in log stream</td><td><span class="badge-med">Medium</span></td><td><code>RedisPublishLogger</code></td><td>sanitize_log_message() before every pub/sub publish</td></tr>
+      <tr><td>robots.txt wildcard agent</td><td><span class="badge-med">Medium</span></td><td><code>_load_robots_txt()</code></td><td>Pass self.config.user_agent not "*" to can_fetch()</td></tr>
+      <tr><td>Auth tokens in server logs</td><td><span class="badge-low">Low</span></td><td><code>ScanRequest</code></td><td>SensitiveDataSanitizer middleware masks values in log output</td></tr>
+      <tr><td>Server header fingerprint</td><td><span class="badge-low">Low</span></td><td><code>uvicorn headers</code></td><td>SecurityHeadersMiddleware pops Server header from every response</td></tr>
+      <tr><td>Unpinned Python dependencies</td><td><span class="badge-low">Low</span></td><td><code>requirements.txt</code></td><td>pip-compile with --generate-hashes creates reproducible locked file</td></tr>
+      <tr><td>CORS allow_origins=["*"]</td><td><span class="badge-low">Low</span></td><td><code>api.py</code></td><td>Restrict to known frontend origins in production deployment</td></tr>
+    </tbody>
+  </table>
+</div>
+
+</div><!-- /tab-security -->
+
+
+<!-- ══════════════════════════════════════════ -->
+<!-- TAB 5: PROJECT STRUCTURE                  -->
+<!-- ══════════════════════════════════════════ -->
+<div class="tab" id="tab-structure">
+
+<div class="section">
+  <div class="section-header">
+    <div class="section-icon" style="background:#fffbeb;color:#b7791f">📁</div>
+    <h2>Target project structure — after all four phases</h2>
+  </div>
+  <div class="tree">sentinalscan/
+├── <span class="dir">.github/</span>
+│   ├── <span class="dir">workflows/</span>
+│   │   ├── <span class="new">ci.yml</span>              <span class="cm">← lint + test + build</span>
+│   │   └── <span class="new">release.yml</span>         <span class="cm">← tag → Docker + Helm</span>
+│   ├── <span class="new">dependabot.yml</span>          <span class="cm">← weekly dep updates</span>
+│   └── <span class="new">actions/sentinalscan/</span>   <span class="cm">← GitHub Actions integration</span>
+│       ├── action.yml
+│       └── poll_and_fail.py
+│
+├── <span class="dir">backend/</span>
+│   ├── <span class="new">ai_triage.py</span>            <span class="cm">← Claude API enrichment + re-scoring</span>
+│   ├── <span class="new">auth.py</span>                 <span class="cm">← API key + JWT (fastapi-users)</span>
+│   ├── <span class="new">billing.py</span>              <span class="cm">← Stripe quota enforcement</span>
+│   ├── <span class="new">compliance.py</span>           <span class="cm">← OWASP / PCI DSS / SOC 2 mapping</span>
+│   ├── <span class="new">crawler_async.py</span>        <span class="cm">← httpx AsyncClient + selectolax</span>
+│   ├── <span class="new">logging_config.py</span>       <span class="cm">← structlog JSON configuration</span>
+│   ├── <span class="new">middleware.py</span>           <span class="cm">← security headers + sanitizer</span>
+│   ├── <span class="new">models.py</span>               <span class="cm">← Pydantic v2 with field validators</span>
+│   ├── <span class="new">notifications.py</span>        <span class="cm">← Slack + email alerting</span>
+│   ├── <span class="new">playwright_crawler.py</span>   <span class="cm">← JS-rendered target support</span>
+│   ├── <span class="new">report_ai.py</span>            <span class="cm">← Jinja2 + WeasyPrint PDF</span>
+│   ├── <span class="new">store.py</span>                <span class="cm">← Redis async + Postgres store</span>
+│   ├── <span class="new">tasks.py</span>                <span class="cm">← Celery task definitions</span>
+│   ├── <span class="new">tester_async.py</span>         <span class="cm">← async VulnerabilityTester</span>
+│   ├── api.py                  <span class="cm">  updated: UUID session-keyed state</span>
+│   ├── vuln_scanner.py         <span class="cm">  updated: async scan() method</span>
+│   ├── requirements.in         <span class="cm">  updated: human-maintained sources</span>
+│   ├── requirements.txt        <span class="cm">  updated: pip-compile locked + hashed</span>
+│   ├── <span class="new">Dockerfile</span>
+│   └── <span class="new">Dockerfile.worker</span>
+│
+├── <span class="dir">backend/tests/</span>              <span class="cm">← zero → full test suite</span>
+│   ├── <span class="new">conftest.py</span>             <span class="cm">← fixtures: config, MockLogger, respx mocks</span>
+│   ├── <span class="new">test_validation.py</span>      <span class="cm">← SSRF, URL parsing, scan state</span>
+│   ├── <span class="new">test_xss.py</span>
+│   ├── <span class="new">test_sqli.py</span>
+│   ├── <span class="new">test_csrf.py</span>
+│   ├── <span class="new">test_headers.py</span>
+│   ├── <span class="new">test_dedup.py</span>
+│   ├── <span class="new">test_api.py</span>             <span class="cm">← FastAPI endpoint tests (httpx.AsyncClient)</span>
+│   └── <span class="dir">fixtures/</span>
+│       └── <span class="new">vulnerable_app.py</span>   <span class="cm">← intentionally vulnerable Starlette app</span>
+│
+├── <span class="dir">backend/templates/</span>          <span class="cm">← Jinja2 PDF report templates</span>
+│   └── <span class="new">report.html.j2</span>
+│
+├── <span class="dir">frontend/src/</span>
+│   ├── <span class="dir">app/</span>                    <span class="cm">  keep (correct entry point)</span>
+│   │   ├── App.jsx
+│   │   ├── ErrorBoundary.jsx
+│   │   └── providers.jsx
+│   ├── <span class="dir">features/</span>               <span class="cm">  keep (correct structure)</span>
+│   │   ├── findings/
+│   │   ├── scan/
+│   │   └── scan-logs/
+│   ├── <span class="dir">services/</span>
+│   │   ├── api.js              <span class="cm">  updated: VITE_API_BASE env var</span>
+│   │   └── websocket.js        <span class="cm">  updated: /ws/logs/{scan_id}</span>
+│   ├── <span class="del">App.jsx</span>                 <span class="cm">← DELETE: stale duplicate</span>
+│   └── <span class="del">App.css</span>                 <span class="cm">← DELETE: stale duplicate</span>
+│
+├── <span class="dir">migrations/</span>                 <span class="cm">← Alembic SQL migrations</span>
+│   ├── <span class="new">001_create_scans.sql</span>
+│   ├── <span class="new">002_create_findings.sql</span>
+│   └── <span class="new">003_create_users.sql</span>
+│
+├── <span class="dir">helm/sentinalscan/</span>          <span class="cm">← Kubernetes Helm chart</span>
+│   ├── Chart.yaml
+│   ├── values.yaml
+│   └── templates/
+│       ├── deployment-api.yaml
+│       ├── deployment-worker.yaml
+│       ├── hpa-worker.yaml
+│       ├── ingress.yaml
+│       └── secrets.yaml
+│
+├── docker-compose.yml          <span class="cm">← dev: api + worker + redis + frontend</span>
+├── docker-compose.prod.yml     <span class="cm">← prod: no hot-reload, resource limits</span>
+├── .env.example                <span class="cm">← committed template, never .env itself</span>
+└── README.md                   <span class="cm">  updated: see README tab</span></div>
+</div>
+
+<div class="section">
+  <div class="section-header">
+    <div class="section-icon" style="background:#fff5f5;color:#c53030">🗑</div>
+    <h2>Immediate deletions — Phase 1</h2>
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title" style="color:#c53030">frontend/src/App.jsx</div>
+      <div class="card-body">Stale duplicate. <code>main.jsx</code> imports from <code>app/App.jsx</code>. This file references the old component architecture. Will cause IDE auto-import confusion and potential bundle errors.</div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="color:#c53030">frontend/src/App.css</div>
+      <div class="card-body">Paired with stale App.jsx. Its reset styles are already handled by Tailwind's base layer and <code>index.css</code>.</div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="color:#c53030">frontend/src/assets/react.svg</div>
+      <div class="card-body">Default Vite template asset — never referenced after the stale App.jsx is removed.</div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="color:#b7791f">vuln_gui.py — Bug on line 408</div>
+      <div class="card-body"><code>self.obey_ssl</code> should be <code>self.obey_robots</code>. Fix if maintaining the Tkinter GUI; otherwise add a deprecation notice and move to CHANGELOG.</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">
+    <div class="section-icon" style="background:#f0fff4;color:#276749">🐳</div>
+    <h2>Docker Compose — full stack</h2>
+  </div>
+  <div class="code-wrap">
+    <div class="code-label">docker-compose.yml</div>
+    <pre class="code">services:
+  api:
+    build: ./backend
+    ports: ["8000:8000"]
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - SENTINAL_API_KEY=${SENTINAL_API_KEY}
+      - JWT_SECRET=${JWT_SECRET}
+      - DATABASE_URL=postgresql+asyncpg://sentinal:${POSTGRES_PASSWORD}@postgres:5432/sentinal
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    depends_on: {redis: {condition: service_healthy}, postgres: {condition: service_healthy}}
+    volumes: ["./reports:/app/reports"]
+    restart: unless-stopped
+
+  worker:
+    build: ./backend
+    command: celery -A tasks worker -l info -c 4 --max-tasks-per-child 10
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql+asyncpg://sentinal:${POSTGRES_PASSWORD}@postgres:5432/sentinal
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    depends_on: {redis: {condition: service_healthy}}
+    restart: unless-stopped
+    profiles: [celery]   <span class="cm"># opt-in: docker compose --profile celery up</span>
+
+  frontend:
+    build: ./frontend
+    ports: ["5173:5173"]
+    environment:
+      - VITE_API_BASE=http://localhost:8000
+    depends_on: [api]
+
+  redis:
+    image: redis:7-alpine
+    volumes: ["redis_data:/data"]
+    command: redis-server --save 60 1 --loglevel warning
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      retries: 5
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=sentinal
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=sentinal
+    volumes: ["postgres_data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sentinal"]
+      interval: 10s
+      retries: 5
+
+volumes:
+  redis_data:
+  postgres_data:</pre>
+  </div>
+</div>
+
+</div><!-- /tab-structure -->
+
+
+<!-- ══════════════════════════════════════════ -->
+<!-- TAB 6: README TEMPLATE                    -->
+<!-- ══════════════════════════════════════════ -->
+<div class="tab" id="tab-readme">
+
+<div class="callout info">
+  <div class="callout-title">The 90-second rule</div>
+  A hiring committee spends 90 seconds on the README before deciding whether to look deeper. The structure below is optimized for that window — most impactful sections first, everything a reviewer needs to run the project within two commands.
+</div>
+
+<div class="section">
+  <div class="section-header">
+    <div class="section-icon" style="background:#fffbeb;color:#b7791f">📄</div>
+    <h2>What each section signals to reviewers</h2>
+  </div>
+  <div class="timeline">
+    <div class="tl-item">
+      <div class="tl-dot" style="background:#276749"></div>
+      <div class="tl-head">One-command setup — non-negotiable</div>
+      <div class="tl-body">If they can't run it in 3 minutes they close the tab. <code>docker compose up</code> must work on a fresh machine with only Docker installed. This is the highest-value non-code element in the entire repo.</div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-dot" style="background:#185FA5"></div>
+      <div class="tl-head">Architecture decision rationale</div>
+      <div class="tl-body">Hiring managers for senior roles scan for: "did they make deliberate choices or just use what was there?" <code>httpx</code> over <code>requests</code>, Celery over threading, Redis pub/sub for logs — these signal engineering judgment, not just familiarity.</div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-dot" style="background:#c53030"></div>
+      <div class="tl-head">Security hardening section — highest signal for security roles</div>
+      <div class="tl-body">For a security engineering position, this is the highest-signal section in the entire repo. You found three critical vulnerabilities in your own tool and fixed them — that is exactly the self-critical mindset security teams hire for.</div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-dot" style="background:#b7791f"></div>
+      <div class="tl-head">Before/after performance table</div>
+      <div class="tl-body">Concrete numbers beat vague claims every time. "5× faster" reads as marketing. "90s → under 20s, measured with <code>pytest-benchmark</code>" reads as engineering. Always include the measurement command.</div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-dot" style="background:#6b46c1"></div>
+      <div class="tl-head">CI/coverage badges</div>
+      <div class="tl-body">Green badges signal professionalism instantly — even reviewers who never click through notice them. A red badge is worse than no badge. Only add badges once CI is reliably green.</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">
+    <div class="section-icon" style="background:#fffbeb;color:#b7791f">📝</div>
+    <h2>Complete README.md template</h2>
+  </div>
+  <div class="code-wrap">
+    <div class="code-label">README.md</div>
+    <pre class="code"><span class="cm"># 🛡️ SentinalScan — Async Web Vulnerability Scanner</span>
+
+<span class="cm">> Scans 200+ pages/minute with async concurrency across 12 vulnerability</span>
+<span class="cm">> classes including SQLi, XSS, CSRF, and SSRF. Powered by httpx + Celery,</span>
+<span class="cm">> with AI-assisted remediation via the Anthropic API.</span>
+
+![CI](https://img.shields.io/github/actions/workflow/status/yourorg/sentinalscan/ci.yml?branch=main)
+![Coverage](https://img.shields.io/codecov/c/github/yourorg/sentinalscan)
+![Python](https://img.shields.io/badge/python-3.12-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+
+<span class="cm">## One-command setup</span>
+
+```bash
+git clone https://github.com/yourorg/sentinalscan
+cd sentinalscan
+cp .env.example .env      # set SENTINAL_API_KEY=your-secret
+docker compose up
+```
+
+Open **http://localhost:5173** — the React dashboard starts immediately.
+
+<span class="cm">## Architecture decisions</span>
+
+**Why httpx over requests** — identical API surface but adds native async
+and HTTP/2. Required prerequisite for the concurrent scanning pipeline.
+
+**Why Celery over threading** — decouples HTTP from compute. The API
+returns a `scan_id` in under 50ms while a worker picks up the actual
+scan. Horizontal scaling requires zero API changes.
+
+**Why Redis pub/sub for logs** — scan logs broadcast to WebSocket
+subscribers without per-connection state. Multiple browser tabs receive
+the same log stream without any sync logic in the API layer.
+
+**Why UUID session-keyed state** — the original design used a global
+singleton that allowed only one concurrent scan and left `is_scanning=true`
+permanently on exceptions. UUID keys enable concurrent scans, proper
+cleanup on failure, and result persistence across API restarts.
+
+<span class="cm">## Security hardening decisions</span>
+
+Three critical vulnerabilities were identified in the original design
+and fixed as Phase 1 of the upgrade:
+
+**SSRF via target URL** — the scanner accepted any URL including internal
+network addresses, allowing it to probe `http://192.168.1.x` or
+`http://169.254.169.254` (AWS metadata). Fixed by hard-rejecting all
+RFC-1918 and cloud metadata CIDR ranges before any HTTP request fires.
+
+**No API authentication** — `POST /scan/start` accepted requests from
+any origin. Fixed by requiring an `X-API-Key` header validated against
+a server environment variable via FastAPI `Depends()`.
+
+**Irrecoverable scan state** — exceptions in the scan thread left
+`is_scanning=true` permanently; the only recovery was restarting the
+process. Fixed by wrapping all scan logic in `try/finally` that always
+resets the session state.
+
+<span class="cm">## Performance — before and after async migration</span>
+
+| Metric                    | Before         | After        |
+|---------------------------|----------------|--------------|
+| Crawl 50 pages, 5 workers | ~90s (sequential) | &lt;20s (concurrent) |
+| SQLi test, 3 forms        | ~27s (sequential) | &lt;9s (concurrent) |
+| Sensitive file probes     | ~12s (sequential) | &lt;3s (concurrent) |
+| API response to /scan/start | blocks until done | &lt;50ms (Celery enqueue) |
+
+Measured with `pytest-benchmark` and `curl -w "%{time_total}"`.
+
+<span class="cm">## Vulnerability checks</span>
+
+| Class | Detection method |
+|---|---|
+| SQL Injection | Error-based + time-based |
+| XSS | Reflected payload testing |
+| CSRF | Missing token detection on POST forms |
+| Security headers | HSTS, CSP, X-Frame-Options, X-Content-Type-Options |
+| Sensitive file exposure | .env, .git/config, backup files |
+| Clickjacking | X-Frame-Options + CSP frame-ancestors |
+| Cookie security | Secure and HttpOnly flags |
+| Open redirects | URL parameter manipulation |
+| Path traversal | ../etc/passwd patterns |
+| Information disclosure | Credentials in page source |
+
+<span class="cm">## Stack</span>
+
+**Backend**: FastAPI · httpx · Celery · Redis · PostgreSQL · structlog
+**Frontend**: React 19 · TanStack Query · Framer Motion · Tailwind CSS
+**AI**: Anthropic Claude (finding triage + PDF remediation reports)
+**Infra**: Docker Compose · Kubernetes Helm chart
+
+<span class="cm">## CLI usage</span>
+
+```bash
+# Quick scan
+python backend/vuln_scanner.py -u https://example.com
+
+# Full scan with options
+python backend/vuln_scanner.py -u https://example.com \
+  --max-pages 100 --workers 10 --no-verify-ssl
+```
+
+<span class="cm">## Running tests</span>
+
+```bash
+cd backend
+pytest tests/ --cov=. --cov-report=term-missing -v
+```
+
+<span class="cm">## ⚠️ Authorized testing only</span>
+
+This tool is for educational purposes and authorized security testing
+only. Only scan systems you own or have explicit written permission to
+test. The authors are not responsible for misuse.</pre>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">
+    <div class="section-icon" style="background:#f0fff4;color:#276749">🌟</div>
+    <h2>Startup positioning — three viable paths</h2>
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title">Path A — Developer security SaaS</div>
+      <div class="card-body">GitHub Actions integration is the acquisition funnel. Free public repos get unlimited scans; private repos need Pro. Pricing anchors on AI remediation reports — engineers pay for the exact code fix, not just the finding. Comp set: Snyk, Socket, Semgrep.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Path B — Pen-testing platform</div>
+      <div class="card-body">Target security consulting firms scanning 50–200 targets per engagement. Compliance mapping (OWASP → PCI DSS → SOC 2) saves 4–6 hours per report. Per-seat annual license. Differentiator: Playwright + AI-authored reports.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Path C — Open-core enterprise</div>
+      <div class="card-body">MIT-licensed core builds community. Enterprise tier adds SSO/SAML, audit logs, private Helm chart, SLA support, and AI triage behind a license key. Model: HashiCorp / Sentry.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Research direction</div>
+      <div class="card-body">Use the scanner as a data collection engine for an ML model that predicts which URL patterns are most likely to be vulnerable. Dataset: (url_structure, params, response_patterns) → (vuln_type, confidence). Would be a publishable contribution to automated security testing.</div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /tab-readme -->
+
+<div style="text-align:center;color:var(--text3);font-size:12px;padding-top:3rem;border-top:1px solid var(--border);margin-top:3rem">
+  <p>SentinalScan Implementation Guide · Companion to the Upgrade Roadmap · April 2026</p>
+  <p style="margin-top:.3rem">For educational and authorized security testing only.</p>
+</div>
+
+</div><!-- /page-wrap -->
+
+<script>
+function show(id, btn) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  const tab = document.getElementById('tab-' + id);
+  if (tab) tab.classList.add('active');
+  if (btn) btn.classList.add('active');
+}
+</script>
+</body>
+</html>

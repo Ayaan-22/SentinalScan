@@ -1,10 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Terminal, Copy, Check } from "lucide-react";
 import { useScanLogs } from "./logs.hooks";
-import clsx from "clsx";
 
-export const LiveLogs = () => {
-  const { logs } = useScanLogs();
+export const LiveLogs = ({ scanId, isScanning }) => {
+  const { logs } = useScanLogs(scanId, isScanning);
   const bottomRef = useRef(null);
   const [copied, setCopied] = useState(false);
 
@@ -34,7 +33,8 @@ export const LiveLogs = () => {
   };
 
   const formatTime = (timestamp) => {
-    const date = new Date(timestamp * 1000);
+    if (!timestamp) return "";
+    const date = new Date(timestamp); // Assuming ISO string from backend
     return date.toLocaleTimeString([], {
       hour: "2-digit",
       minute: "2-digit",

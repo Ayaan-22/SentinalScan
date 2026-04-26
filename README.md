@@ -4,131 +4,132 @@
 > _Built with Python, FastAPI, and React (Cyber Aesthetic)_
 
 ![Version](https://img.shields.io/badge/version-2.1.0-blue)
-![Python](https://img.shields.io/badge/python-3.9%2B-blue)
+![Python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![React](https://img.shields.io/badge/react-19-cyan)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.100%2B-teal)
+![License](https://img.shields.io/badge/license-MIT-green)
+
+---
 
 ## 🚀 Overview
 
-**SentinalScan** is a powerful, production-ready web vulnerability scanner designed for security professionals and developers. It automates the detection of common web vulnerabilities, providing real-time feedback and detailed reports.
+**SentinalScan** is a high-performance, asynchronous web vulnerability scanner designed for security researchers and developers. It automates the detection of common vulnerabilities while providing a premium, interactive experience via a modernized frontend.
 
-The project features a **Premium Cyber/Glassmorphism Interface** built with React & Tailwind CSS. It provides a hacker-style dashboard with real-time logs, animated stats, and deep insight into security posture.
+The project features a **Premium Cyber/Glassmorphism Interface** built with React, Tailwind CSS, and Framer Motion, offering real-time feedback through WebSocket streams.
+
+---
 
 ## ✨ Key Features
 
-- **🎨 Premium Cyber UI**: Dark-mode "Glassmorphism" aesthetic with neon accents, smooth animations, and responsive layout.
-- **🔍 Comprehensive Crawling**: Intelligent multi-threaded crawler with scope control and `robots.txt` compliance.
-- **⚡ Real-Time Scanning**: View live execution logs and findings via WebSocket streams.
-- **🖥️ Interactive Dashboard**:
-  - Live "Hacker Terminal" logs.
-  - Animated statistics cards.
-  - Severity-coded finding badges (Critical/High/Medium/Low).
-- **📊 Multiple Report Formats**: Export findings to **HTML**, **JSON**, and **Text**.
+- **🎨 Premium Cyber UI**: Dark-mode "Glassmorphism" aesthetic with neon accents, smooth Framer Motion animations, and responsive layout.
+- **🔍 Intelligent Async Crawling**: High-speed discovery using `httpx` with configurable depth, breadth, and `robots.txt` compliance.
+- **⚡ Real-Time WebSocket Logs**: Live "Hacker Terminal" style execution logs streamed directly from the scanner engine.
+- **🛡️ Secure By Design**: API Key authentication, SSRF protection, and WAF-evasion delays.
+- **📊 Detailed Analytics**: Animated statistics dashboard with severity-coded finding badges.
+- **📝 Multiple Interfaces**:
+  - **Modern Web Dashboard**: Full-featured React app.
+  - **Standalone Legacy GUI**: Tkinter-based desktop tool for quick local scans.
 
-### Vulnerability Checks
+### 🛡️ Vulnerability Coverage
 
-SentinalScan actively tests for:
+SentinalScan actively detects:
 
-- **SQL Injection (SQLi)**: Error-based and Time-based detection.
-- **Cross-Site Scripting (XSS)**: Reflected XSS payload testing.
-- **Cross-Site Request Forgery (CSRF)**: Missing token detection on forms.
-- **Security Headers**: Missing `HSTS`, `Content-Security-Policy`, `X-Content-Type-Options`.
-- **Sensitive File Exposure**: Detection of `.env`, `.git`, backups, and config files.
-- **Clickjacking**: Missing `X-Frame-Options` or CSP frame ancestors.
-- **Cookie Security**: Missing `Secure` and `HttpOnly` flags.
-- **Open Redirects** & **Path Traversal**.
+- **Injection Attacks**: Error-based and Time-based SQL Injection (SQLi).
+- **Client-Side Attacks**: Reflected Cross-Site Scripting (XSS).
+- **Broken Access Control**: Sensitive file exposure (`.env`, `.git`, backups).
+- **Session Security**: Missing CSRF tokens on sensitive forms.
+- **Infrastructure Security**: Missing critical security headers (`HSTS`, `CSP`, `CORS`).
 
 ---
 
-## 🏗️ Architecture
+## 💻 Tech Stack
 
-The project is organized into a modular structure:
-
-```
-SentinalScan/
-├── backend/               # Python Backend
-│   ├── api.py             # FastAPI REST Server w/ WebSockets
-│   └── vuln_scanner.py    # Core Scanning Logic & Engine
-├── frontend/              # React Frontend
-│   ├── src/               # Application Source
-│   │   ├── components/    # Reusable UI Components (Glassmorphism)
-│   │   └── App.jsx        # Main Dashboard Layout
-│   └── public/            # Static Assets
-├── reports/               # Generated Scan Reports
-└── vuln_gui.py            # Legacy Tkinter Interface
-```
+| Component | Technology |
+| :--- | :--- |
+| **Backend** | Python 3.11, FastAPI, Pydantic v2, Httpx |
+| **Frontend** | React 19, Vite, Tailwind CSS, Framer Motion |
+| **Messaging** | WebSockets (Real-time logs) |
+| **Testing** | Pytest, Pytest-asyncio |
 
 ---
 
-## 🛠️ Installation
-
-### Prerequisites
-
-- Python 3.9+
-- Node.js 18+ & npm
-
-### 1. Backend Setup
-
-Navigate to the project root:
+## 🏗️ Project Structure
 
 ```bash
-# Install Python dependencies
-pip install -r backend/requirements.txt
+SentinalScan/
+├── backend/               # Python FastAPI Backend
+│   ├── app/
+│   │   ├── api/           # API Endpoints & Routes
+│   │   ├── core/          # Security & Global Config
+│   │   ├── models/        # Data Schemas (Pydantic)
+│   │   └── services/      # Scanner Logic & Plugin System
+│   ├── tests/             # Integration & Unit Tests
+│   └── requirements.txt
+├── frontend/              # React + Vite Frontend
+│   ├── src/               # Application Source
+│   │   ├── app/           # Layout & Global State
+│   │   ├── features/      # Modular Domain Logic
+│   │   └── services/      # API/WS Client Implementation
+│   └── package.json
+└── vuln_gui.py            # Legacy Desktop Interface
 ```
 
-### 2. Frontend Setup
+---
 
-Navigate to the frontend directory:
+## 🛠️ Installation & Setup
+
+### 1. Prerequisites
+
+- **Python 3.11+**
+- **Node.js 18+** & npm
+
+### 2. Backend Setup
+
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
+cp .env.example .env
+```
+
+_Edit `.env` to set your `API_KEY` and other configurations._
+
+### 3. Frontend Setup
 
 ```bash
 cd frontend
-
-# Install Node modules
 npm install
+cp .env.example .env.local
 ```
 
 ---
 
-## 📖 Usage
+## 📖 Usage Guide
 
-### Option A: Modern Web Application (Recommended)
+### Running the Full Suite (Web)
 
-1.  **Start the Backend API**:
+1. **Start Backend**:
 
-    ```bash
-    # From project root
-    python backend/api.py
-    ```
+   ```bash
+   cd backend
+   uvicorn app.main:app --reload
+   ```
 
-    _Server runs at http://localhost:8000_
+   _API available at <http://localhost:8000>_
 
-2.  **Start the Frontend**:
+2. **Start Frontend**:
 
-    ```bash
-    # From frontend/ directory
-    npm run dev
-    ```
+   ```bash
+   cd frontend
+   npm run dev
+   ```
 
-    _Client runs at http://localhost:5173_
+   _Client available at <http://localhost:5173>_
 
-3.  Open **http://localhost:5173** in your browser.
-4.  Enter a Target URL and click **Initialize Scan**.
+3. Access the dashboard at <http://localhost:5173>, enter your target, and hit **Initiate Active Scan**.
 
-### Option B: Command Line Interface (CLI)
-
-For quick, headless scans:
-
-```bash
-# Basic scan
-python backend/vuln_scanner.py -u https://example.com
-
-# Advanced usage
-python backend/vuln_scanner.py -u https://example.com --max-pages 100 --workers 10 --no-verify-ssl
-```
-
-### Option C: Legacy GUI
-
-To run the standalone desktop version (Tkinter):
+### Running Legacy Desktop GUI
 
 ```bash
 python vuln_gui.py
@@ -136,27 +137,26 @@ python vuln_gui.py
 
 ---
 
-## ⚙️ Configuration
+## 🧪 Testing
 
-You can customize scans via the UI (Advanced Settings accordion) or CLI arguments:
+We use `pytest` for backend testing. To run the suite:
 
-- **Max Pages**: Limit the crawl depth and breadth.
-- **Concurrency**: Number of worker threads.
-- **Delays**: Throttling requests to avoid WAF blocking.
-- **Auth**: Bearer tokens and custom cookies support.
-- **Exclusions**: Skip specific paths like `/logout` or `/admin`.
+```bash
+cd backend
+pytest
+```
 
 ---
 
 ## ⚠️ Disclaimer
 
-> **CRITICAL WARNING**:
-> This tool is for **EDUCATIONAL PURPOSES** and **AUTHORIZED SECURITY TESTING ONLY**.
+> [!CAUTION]
+> **This tool is for AUTHORIZED SECURITY TESTING ONLY.**
 >
-> 1.  **DO NOT** scan targets you do not own or have explicit written permission to test.
-> 2.  The authors are not responsible for any damage or legal consequences caused by misuse of this tool.
-> 3.  Always follow responsible disclosure guidelines.
+> 1. **NEVER** scan a target without explicit written permission.
+> 2. The developers assume **NO LIABILITY** for misuse or damage caused by this tool.
+> 3. Use responsibly and follow ethical disclosure protocols.
 
 ---
 
-**© 2025 SentinalScan Team**
+### © 2026 SentinalScan | Modernizing Web Security
