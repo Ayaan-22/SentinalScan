@@ -4,7 +4,6 @@ from .base import BaseCheck
 from app.models.vulnerability import Vulnerability, VulnType, SeverityLevel
 import urllib.parse
 import re
-import time
 import logging
 
 logger = logging.getLogger(__name__)
@@ -32,7 +31,7 @@ class SQLInjection(BaseCheck):
                     return db
         return None
 
-    def check(self, url: str, content: str, forms: List[BeautifulSoup]) -> List[Vulnerability]:
+    async def check(self, url: str, content: str, forms: List[BeautifulSoup]) -> List[Vulnerability]:
         vulns = []
         
         # Error-based payloads
@@ -69,9 +68,9 @@ class SQLInjection(BaseCheck):
                             
                     try:
                         if method == "post":
-                            resp = self.session.post(target_url, data=data, timeout=5)
+                            resp = await self.client.post(target_url, data=data, timeout=5)
                         else:
-                            resp = self.session.get(target_url, params=data, timeout=5)
+                            resp = await self.client.get(target_url, params=data, timeout=5)
                             
                         db_type = self._has_sql_error(resp.text)
                         if db_type:

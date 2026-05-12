@@ -10,11 +10,13 @@ router = APIRouter()
 async def start_scan(request: ScanRequest):
     """
     Start a new vulnerability scan.
+    Returns immediately with a scan_id. Monitor progress via GET /{scan_id}
+    or stream logs via WebSocket at /ws/logs/{scan_id}.
     """
     try:
-        return scan_manager.create_scan(request)
+        return await scan_manager.create_scan(request)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=409, detail=str(e))
 
 @router.get("/{scan_id}", response_model=ScanResponse, dependencies=[Depends(get_api_key)])
 async def get_scan_status(scan_id: str):

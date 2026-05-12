@@ -8,13 +8,13 @@ logger = logging.getLogger(__name__)
 
 
 class CSRFCheck(BaseCheck):
-    """Check for missing CSRF protection on forms"""
+    """Check for missing CSRF protection on forms (Async)."""
     
     @property
     def vuln_type(self) -> VulnType:
         return VulnType.CSRF
 
-    def check(self, url: str, content: str, forms: List[BeautifulSoup]) -> List[Vulnerability]:
+    async def check(self, url: str, content: str, forms: List[BeautifulSoup]) -> List[Vulnerability]:
         vulns = []
         
         for form in forms:

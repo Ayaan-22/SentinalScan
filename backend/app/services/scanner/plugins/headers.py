@@ -1,12 +1,13 @@
-from typing import List
+from typing import List, Set
 from bs4 import BeautifulSoup
 from .base import BaseCheck
 from app.models.vulnerability import Vulnerability, VulnType, SeverityLevel
 import logging
+import httpx
 
 logger = logging.getLogger(__name__)
 
-# Essential security headers that should be present
+# Essential security headers that should be present on every response
 REQUIRED_HEADERS = {
     "X-Content-Type-Options": {
         "expected": "nosniff",
@@ -61,27 +62,46 @@ REQUIRED_HEADERS = {
 
 
 class SecurityHeaders(BaseCheck):
-    """Check for missing or misconfigured security headers"""
+    """Check for missing or misconfigured security headers (Async).
     
+    Deduplication: reports each missing header once per scan.
+    """
+
+    def __init__(self, client: httpx.AsyncClient):
+        super().__init__(client)
+        # Scan-level dedup: track which header names have already been reported
+        self._reported_headers: Set[str] = set()
+
     @property
     def vuln_type(self) -> VulnType:
         return VulnType.SECURITY_HEADERS
 
-    def check(self, url: str, content: str, forms: List[BeautifulSoup]) -> List[Vulnerability]:
+    async def check(self, url: str, content: str, forms: List[BeautifulSoup]) -> List[Vulnerability]:
         vulns = []
-        
+
         try:
-            resp = self.session.get(url, timeout=5)
+            resp = await self.client.get(url, timeout=5)
             headers = resp.headers
-            
+
             for header_name, config in REQUIRED_HEADERS.items():
+                # Skip if we already reported this missing header for this scan
+                if header_name in self._reported_headers:
+                    continue
+
                 header_value = headers.get(header_name)
-                
+
                 if not header_value:
+                    # Mark as reported at the scan level
+                    self._reported_headers.add(header_name)
+
                     vuln = self._create_vuln(
                         url=url,
                         description=f"Missing security header: {header_name}",
-                        evidence=f"Response does not include '{header_name}' header",
+                        evidence=(
+                            f"Response at {url} does not include the "
+                            f"'{header_name}' header. This misconfiguration "
+                            f"likely affects the entire site."
+                        ),
                         severity_score=config["severity"],
                         severity_level=config["level"],  # type: ignore
                         severity_icon=config["icon"],
@@ -89,8 +109,8 @@ class SecurityHeaders(BaseCheck):
                         confidence="High"
                     )
                     vulns.append(vuln)
-                    
+
         except Exception as e:
             logger.debug(f"Security headers check failed for {url}: {e}")
-            
+
         return vulns

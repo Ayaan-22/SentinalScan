@@ -1,9 +1,9 @@
 import logging
+import asyncio
 import time
-from typing import List, Optional, Set, Tuple
+from typing import List, Set, Tuple
 from bs4 import BeautifulSoup
-from concurrent.futures import ThreadPoolExecutor
-from app.models.scan import ScanRequest, ScanStatus
+from app.models.scan import ScanRequest
 from app.models.vulnerability import Vulnerability
 from app.services.scanner.crawler import WebCrawler
 from app.services.scanner.plugins.base import BaseCheck
@@ -16,24 +16,30 @@ from app.services.scanner.plugins.csrf import CSRFCheck
 logger = logging.getLogger(__name__)
 
 class ScannerEngine:
-    """Core scanning engine — crawl + test pipeline"""
+    """Core scanning engine — Async crawl + parallel test pipeline"""
     
     def __init__(self, config: ScanRequest):
         self.config = config
         self.crawler = WebCrawler(config)
-        self.plugins: List[BaseCheck] = [
-            ReflectedXSS(self.crawler.session),
-            SQLInjection(self.crawler.session),
-            SecurityHeaders(self.crawler.session),
-            SensitiveFiles(self.crawler.session),
-            CSRFCheck(self.crawler.session),
-        ]
         self.vulnerabilities: List[Vulnerability] = []
         self._stop_event = False
         self._pages_scanned = 0
+        self.plugins: List[BaseCheck] = []
+
+    async def _init_plugins(self):
+        """Initialize plugins with the crawler's async client."""
+        client = await self.crawler._get_client()
+        self.plugins = [
+            ReflectedXSS(client),
+            SQLInjection(client),
+            SecurityHeaders(client),
+            SensitiveFiles(client),
+            CSRFCheck(client),
+        ]
 
     def stop(self):
         self._stop_event = True
+        self.crawler.stop() if hasattr(self.crawler, 'stop') else None
 
     @property
     def pages_scanned(self) -> int:
@@ -41,8 +47,8 @@ class ScannerEngine:
 
     def _extract_forms(self, content: str) -> List[BeautifulSoup]:
         try:
-            soup = BeautifulSoup(content, 'html.parser')
-            return soup.find_all('form')
+            # CPU-bound, but BS4 is relatively fast for individual pages
+            return BeautifulSoup(content, 'html.parser').find_all('form')
         except Exception:
             return []
 
@@ -51,7 +57,6 @@ class ScannerEngine:
         seen: Set[Tuple[str, str, str]] = set()
         unique = []
         for vuln in self.vulnerabilities:
-            # Create a fingerprint from the key fields
             fingerprint = (
                 vuln.url,
                 vuln.vuln_type.value if hasattr(vuln.vuln_type, 'value') else str(vuln.vuln_type),
@@ -66,20 +71,21 @@ class ScannerEngine:
             logger.info(f"Deduplication removed {removed} duplicate findings")
         self.vulnerabilities = unique
 
-    def run(self) -> List[Vulnerability]:
-        """Execute the full scan pipeline: crawl → test → deduplicate."""
+    async def run(self) -> List[Vulnerability]:
+        """Execute the full async scan pipeline."""
         start_time = time.time()
         logger.info(f"{'='*60}")
-        logger.info(f"VULNERABILITY SCAN STARTED")
+        logger.info(f"VULNERABILITY SCAN STARTED (ASYNC ENGINE)")
         logger.info(f"Target: {self.config.target_url}")
         logger.info(f"Max Pages: {self.config.max_pages} | Workers: {self.config.workers}")
-        logger.info(f"Plugins: {', '.join(p.vuln_type.value for p in self.plugins)}")
         logger.info(f"{'='*60}")
         
         try:
+            await self._init_plugins()
+            
             # Phase 1: Crawl
             logger.info("[PHASE 1] Crawling target...")
-            pages = self.crawler.crawl()
+            pages = await self.crawler.crawl()
             logger.info(f"[PHASE 1] Complete — {len(pages)} pages discovered")
             
             if self._stop_event:
@@ -89,38 +95,42 @@ class ScannerEngine:
             # Phase 2: Test each page
             logger.info(f"[PHASE 2] Testing {len(pages)} pages with {len(self.plugins)} plugins...")
             
-            for i, page in enumerate(pages):
-                if self._stop_event:
-                    logger.info("Scan stopped by user during testing phase")
-                    break
+            # Use a semaphore to limit concurrent page scans if workers > 1
+            sem = asyncio.Semaphore(self.config.workers)
+            
+            async def scan_page(page: str, index: int):
+                async with sem:
+                    if self._stop_event:
+                        return
                     
-                logger.info(f"[{i+1}/{len(pages)}] Scanning: {page}")
-                
-                try:
-                    # Use cached response from crawler if available
-                    content = self.crawler.response_cache.get(page)
-                    if not content:
-                        resp = self.crawler.session.get(page, timeout=self.config.timeout)
-                        content = resp.text
-                    
-                    forms = self._extract_forms(content)
-                    
-                    # Run all plugins on this page
-                    for plugin in self.plugins:
-                        if self._stop_event:
-                            break
-                        try:
-                            vulns = plugin.check(page, content, forms)
-                            if vulns:
-                                logger.info(f"  ⚠ {plugin.vuln_type.value}: {len(vulns)} finding(s)")
-                            self.vulnerabilities.extend(vulns)
-                        except Exception as e:
-                            logger.error(f"  Plugin {plugin.vuln_type.value} failed on {page}: {e}")
-                            
-                except Exception as e:
-                    logger.error(f"  Failed to fetch {page} for testing: {e}")
-                
-                self._pages_scanned = i + 1
+                    logger.info(f"[{index+1}/{len(pages)}] Scanning: {page}")
+                    try:
+                        content = self.crawler.response_cache.get(page)
+                        if not content:
+                            client = await self.crawler._get_client()
+                            resp = await client.get(page, timeout=self.config.timeout)
+                            content = resp.text
+                        
+                        forms = self._extract_forms(content)
+                        
+                        # Run all plugins concurrently for this page
+                        tasks = [plugin.check(page, content, forms) for plugin in self.plugins]
+                        plugin_results = await asyncio.gather(*tasks, return_exceptions=True)
+                        
+                        for i, result in enumerate(plugin_results):
+                            if isinstance(result, Exception):
+                                logger.error(f"  Plugin {self.plugins[i].vuln_type.value} failed on {page}: {result}")
+                            elif result:
+                                logger.info(f"  ⚠ {self.plugins[i].vuln_type.value}: {len(result)} finding(s)")
+                                self.vulnerabilities.extend(result)
+                                
+                    except Exception as e:
+                        logger.error(f"  Failed to scan {page}: {e}")
+                    finally:
+                        self._pages_scanned += 1
+
+            # Run page scans concurrently
+            await asyncio.gather(*[scan_page(p, i) for i, p in enumerate(pages)])
             
             # Phase 3: Deduplicate
             self._deduplicate_vulnerabilities()
@@ -132,7 +142,6 @@ class ScannerEngine:
             logger.info(f"Pages scanned: {self._pages_scanned}")
             logger.info(f"Vulnerabilities found: {len(self.vulnerabilities)}")
             
-            # Breakdown by severity
             severity_counts = {}
             for v in self.vulnerabilities:
                 level = v.severity_level.value if hasattr(v.severity_level, 'value') else str(v.severity_level)
@@ -142,7 +151,6 @@ class ScannerEngine:
             logger.info(f"{'='*60}")
             
         finally:
-            # Always close the crawler session
-            self.crawler.close()
+            await self.crawler.close()
         
         return self.vulnerabilities

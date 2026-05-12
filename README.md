@@ -1,55 +1,62 @@
 # 🛡️ SentinalScan - Advanced Web Vulnerability Scanner
 
-> **Professional-Grade Automated Security Assessment Tool**  
-> _Built with Python, FastAPI, and React (Cyber Aesthetic)_
+> **Professional-Grade Automated Security Assessment Tool**
+> _High-performance scanning with a native async engine and premium cyber aesthetics._
 
-![Version](https://img.shields.io/badge/version-2.1.0-blue)
-![Python](https://img.shields.io/badge/python-3.11%2B-blue)
+![Version](https://img.shields.io/badge/version-2.2.0-blue)
+![Python](https://img.shields.io/badge/python-3.12-blue)
 ![React](https://img.shields.io/badge/react-19-cyan)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.100%2B-teal)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.110.0-teal)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ---
 
 ## 🚀 Overview
 
-**SentinalScan** is a high-performance, asynchronous web vulnerability scanner designed for security researchers and developers. It automates the detection of common vulnerabilities while providing a premium, interactive experience via a modernized frontend.
+**SentinalScan** is a high-performance, asynchronous web vulnerability scanner designed for security researchers and developers. It automates the detection of common vulnerabilities (XSS, SQLi, CSRF, etc.) while providing a premium, interactive experience via a modernized frontend.
 
-The project features a **Premium Cyber/Glassmorphism Interface** built with React, Tailwind CSS, and Framer Motion, offering real-time feedback through WebSocket streams.
+### ⚡ The Async Migration
+
+The core engine has been fully migrated from a synchronous thread-pooled model to a native **asyncio-driven pipeline**:
+
+- **Crawl Phase**: Utilizes `httpx.AsyncClient` with an `asyncio.Queue` worker pattern for high-speed discovery.
+- **Test Phase**: Employs `asyncio.gather` for parallel plugin execution per page.
+- **Performance**: Benchmarked at **<20s for a 50-page crawl**, a 4.5x improvement over the legacy sequential implementation.
 
 ---
 
 ## ✨ Key Features
 
-- **🎨 Premium Cyber UI**: Dark-mode "Glassmorphism" aesthetic with neon accents, smooth Framer Motion animations, and responsive layout.
-- **🔍 Intelligent Async Crawling**: High-speed discovery using `httpx` with configurable depth, breadth, and `robots.txt` compliance.
-- **⚡ Real-Time WebSocket Logs**: Live "Hacker Terminal" style execution logs streamed directly from the scanner engine.
-- **🛡️ Secure By Design**: API Key authentication, SSRF protection, and WAF-evasion delays.
-- **📊 Detailed Analytics**: Animated statistics dashboard with severity-coded finding badges.
-- **📝 Multiple Interfaces**:
-  - **Modern Web Dashboard**: Full-featured React app.
-  - **Standalone Legacy GUI**: Tkinter-based desktop tool for quick local scans.
+### 🎨 Premium Interface & UX
 
-### 🛡️ Vulnerability Coverage
+- **Cyber/Glassmorphism UI**: A stunning dark-mode aesthetic built with Tailwind CSS and Framer Motion.
+- **Real-Time Log Stream**: A "Hacker Terminal" style log viewer powered by WebSockets, featuring auto-scroll and XSS-safe sanitization.
+- **Interactive Dashboard**: Live stats, findings distribution charts (Recharts), and confidence scoring for every vulnerability.
 
-SentinalScan actively detects:
+### 🔍 Advanced Scanning Engine
 
-- **Injection Attacks**: Error-based and Time-based SQL Injection (SQLi).
-- **Client-Side Attacks**: Reflected Cross-Site Scripting (XSS).
-- **Broken Access Control**: Sensitive file exposure (`.env`, `.git`, backups).
-- **Session Security**: Missing CSRF tokens on sensitive forms.
-- **Infrastructure Security**: Missing critical security headers (`HSTS`, `CSP`, `CORS`).
+- **Intelligent Crawler**: Respects `robots.txt` (configurable), handles recursive discovery, and maintains a strict scope based on the target domain.
+- **Parallel Testing**: All vulnerability plugins run concurrently for every discovered page, maximizing bandwidth and minimizing scan time.
+- **Vulnerability Deduplication**: Smart fingerprinting ensures that identical findings (e.g., missing headers across 50 pages) are consolidated into high-signal reports.
+
+### 🛡️ Security & Hardening
+
+- **SSRF Protection**: Production-grade blocklist for internal CIDRs (RFC-1918), IPv6 loopback, and cloud metadata endpoints.
+- **API Key Entropy**: Mandatory 32+ character API key with automated startup validation.
+- **Data Sanitization**: Automatic masking of PII (passwords, tokens, cookies) in logs and responses via `SensitiveDataSanitizer` middleware.
+- **Defensive Headers**: Backend hardened with automatic `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, and `CSP` hints.
 
 ---
 
-## 💻 Tech Stack
+## 🛡️ Vulnerability Coverage
 
-| Component | Technology |
-| :--- | :--- |
-| **Backend** | Python 3.11, FastAPI, Pydantic v2, Httpx |
-| **Frontend** | React 19, Vite, Tailwind CSS, Framer Motion |
-| **Messaging** | WebSockets (Real-time logs) |
-| **Testing** | Pytest, Pytest-asyncio |
+| Plugin                     | Vuln Type             | Detection Logic                                                                           |
+| :------------------------- | :-------------------- | :---------------------------------------------------------------------------------------- |
+| **Reflected XSS**    | Client-Side           | Injects payloads into forms/params and verifies execution/reflection in the DOM.          |
+| **SQL Injection**    | Injection             | Tests for error signatures (MySQL, PG, SQLite) and time-based sleep verification.         |
+| **Sensitive Files**  | Information Leak      | Probes for common exposures like `.env`, `.git`, `.bak`, and configuration backups. |
+| **CSRF Check**       | Broken Access Control | Analyzes state-changing forms for missing or weak anti-forgery token implementations.     |
+| **Security Headers** | Configuration         | Audits `HSTS`, `Content-Security-Policy`, `Referrer-Policy`, and `CORS` settings. |
 
 ---
 
@@ -57,94 +64,125 @@ SentinalScan actively detects:
 
 ```bash
 SentinalScan/
-├── backend/               # Python FastAPI Backend
+├── backend/               # FastAPI Asynchronous Backend
 │   ├── app/
-│   │   ├── api/           # API Endpoints & Routes
-│   │   ├── core/          # Security & Global Config
-│   │   ├── models/        # Data Schemas (Pydantic)
-│   │   └── services/      # Scanner Logic & Plugin System
-│   ├── tests/             # Integration & Unit Tests
-│   └── requirements.txt
-├── frontend/              # React + Vite Frontend
-│   ├── src/               # Application Source
-│   │   ├── app/           # Layout & Global State
-│   │   ├── features/      # Modular Domain Logic
-│   │   └── services/      # API/WS Client Implementation
-│   └── package.json
-└── vuln_gui.py            # Legacy Desktop Interface
+│   │   ├── api/           # V1 Endpoints & Auth Logic
+│   │   ├── core/          # Security, Config & Log Sanitizers
+│   │   ├── middleware.py  # Security Headers & PII Redaction
+│   │   ├── models/        # Pydantic v2 Schema Definitions
+│   │   └── services/
+│   │       └── scanner/
+│   │           ├── crawler.py    # Async httpx crawler w/ SSRF protection
+│   │           ├── engine.py     # Two-phase async orchestrator
+│   │           ├── manager.py    # Session control & asyncio.Lock management
+│   │           └── plugins/      # XSS, SQLi, CSRF, Headers, Sensitive Files
+│   ├── Dockerfile         # Multi-stage production build
+│   ├── .env.example       # Template for API_KEY & CORS settings
+│   └── requirements.txt   # Hard-pinned async dependencies
+├── frontend/              # React 19 / Vite Frontend
+│   ├── src/
+│   │   ├── app/           # UI Providers & Global Layout
+│   │   ├── features/      # Modular Scan, Findings, & Log features
+│   │   └── services/      # Axios API client with X-API-Key integration
+│   ├── .env.example       # Frontend environment template
+│   └── package.json       # Vite / Tailwind / Framer configuration
+├── reports/
+│   └── audits/            # Architectural & Security Audit Reports
+├── docker-compose.yml     # Unified stack orchestration
+└── task.md                # Development roadmap & phase tracking
 ```
 
 ---
 
 ## 🛠️ Installation & Setup
 
-### 1. Prerequisites
+### Prerequisites
 
-- **Python 3.11+**
-- **Node.js 18+** & npm
+- **Python 3.12+**
+- **Node.js 20+** & npm
+- **Docker** (Recommended)
 
-### 2. Backend Setup
+### Option A: Docker Deployment (Fastest)
+
+```bash
+# Clone the repository
+git clone https://github.com/Ayaan-22/SentinalScan.git
+cd SentinalScan
+
+# Build and start the full stack
+docker compose up --build
+```
+
+_Access the Dashboard at [http://localhost:5173](http://localhost:5173)_
+
+### Option B: Local Setup (Development)
+
+#### 1. Backend Setup
 
 ```bash
 cd backend
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
+
+# Generate a high-entropy API key
+python -c "import secrets; print(secrets.token_hex(32))"
+
+# Create .env and paste your key
 cp .env.example .env
 ```
 
-_Edit `.env` to set your `API_KEY` and other configurations._
-
-### 3. Frontend Setup
+#### 2. Frontend Setup
 
 ```bash
-cd frontend
+cd ../frontend
 npm install
-cp .env.example .env.local
+
+# Create .env and update VITE_API_KEY
+cp .env.example .env
 ```
 
 ---
 
 ## 📖 Usage Guide
 
-### Running the Full Suite (Web)
+### 1. Start the Services
 
-1. **Start Backend**:
+- **Backend**: `uvicorn app.main:app --reload` (Port 8000)
+- **Frontend**: `npm run dev` (Port 5173)
 
-   ```bash
-   cd backend
-   uvicorn app.main:app --reload
-   ```
+### 2. Configure a Scan
 
-   _API available at <http://localhost:8000>_
+- Navigate to the Dashboard.
+- Enter your **API Key** in Advanced Configuration.
+- Enter a **Target URL** (Note: Internal IPs are blocked by SSRF protection).
+- Toggle **Obey Robots** if you want to respect the target's `robots.txt`.
 
-2. **Start Frontend**:
+### 3. Analyze Results
 
-   ```bash
-   cd frontend
-   npm run dev
-   ```
+- Monitor **Live Logs** for real-time discovery events.
+- Review **Security Findings** as they are discovered (live-updated).
+- Use the **Distribution Chart** to triage by severity.
 
-   _Client available at <http://localhost:5173>_
+---
 
-3. Access the dashboard at <http://localhost:5173>, enter your target, and hit **Initiate Active Scan**.
+## 🧪 Testing & Validation
 
-### Running Legacy Desktop GUI
+We maintain a rigorous testing suite using `pytest-asyncio`:
 
 ```bash
-python vuln_gui.py
+cd backend
+pytest -v  # Runs SSRF, Plugin, and API security tests
 ```
 
 ---
 
-## 🧪 Testing
+## 📝 Engineering Reports
 
-We use `pytest` for backend testing. To run the suite:
+For detailed technical analysis, refer to our internal audits:
 
-```bash
-cd backend
-pytest
-```
+- [Architecture Analysis](reports/audits/sentinalscan-architecture-analysis.md)
+- [Implementation Guide](reports/audits/sentinalscan-implementation-guide.md)
 
 ---
 
@@ -159,4 +197,4 @@ pytest
 
 ---
 
-### © 2026 SentinalScan | Modernizing Web Security
+### © 2026 SentinalScan | Automated Security Assessment

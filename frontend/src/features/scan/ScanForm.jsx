@@ -14,6 +14,26 @@ export function ScanForm({ onScanStarted, onStop, isScanning }) {
   const startScan = useStartScan();
 
   const [url, setUrl] = useState("");
+  const [isValidUrl, setIsValidUrl] = useState(true);
+
+  const validateUrl = (value) => {
+    setUrl(value);
+    if (!value) {
+      setIsValidUrl(true);
+      return;
+    }
+    try {
+      // Basic check for http/https prefix as required by backend
+      if (!value.startsWith("http://") && !value.startsWith("https://")) {
+        setIsValidUrl(false);
+        return;
+      }
+      new URL(value);
+      setIsValidUrl(true);
+    } catch {
+      setIsValidUrl(false);
+    }
+  };
   const [options, setOptions] = useState({
     verify_ssl: true,
     obey_robots: true,
@@ -32,7 +52,7 @@ export function ScanForm({ onScanStarted, onStop, isScanning }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!url) return;
+    if (!url || !isValidUrl) return;
 
     startScan.mutate(
       {
@@ -72,14 +92,24 @@ export function ScanForm({ onScanStarted, onStop, isScanning }) {
             <Globe className="h-5 w-5 text-slate-500 group-focus-within:text-cyan-400 transition-colors" />
           </div>
           <input
-            type="url"
+            type="text"
             required
             placeholder="https://example.com"
             value={url}
-            onChange={(e) => setUrl(e.target.value)}
+            onChange={(e) => validateUrl(e.target.value)}
             disabled={isScanning}
-            className="block w-full pl-10 pr-3 py-3 bg-slate-950/50 border border-slate-700 rounded-xl text-slate-200 placeholder-slate-600 focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 transition-all font-mono text-sm"
+            className={clsx(
+              "block w-full pl-10 pr-3 py-3 bg-slate-950/50 border rounded-xl text-slate-200 placeholder-slate-600 focus:ring-2 transition-all font-mono text-sm",
+              !isValidUrl && url 
+                ? "border-red-500/50 focus:ring-red-500/50 focus:border-red-500" 
+                : "border-slate-700 focus:ring-cyan-500/50 focus:border-cyan-500"
+            )}
           />
+          {!isValidUrl && url && (
+            <p className="absolute -bottom-6 left-1 text-[10px] text-red-500 font-bold uppercase tracking-widest animate-pulse">
+              Invalid target URL format
+            </p>
+          )}
         </div>
       </div>
 

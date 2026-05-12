@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 from .base import BaseCheck
 from app.models.vulnerability import Vulnerability, VulnType, SeverityLevel
 import logging
+import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -29,27 +30,30 @@ SENSITIVE_PATHS = [
     ("docker-compose.yml", "Docker Compose configuration"),
 ]
 
+# Paths that must NOT return JSON — if they do it's a framework error page
+_NON_JSON_PATHS = {p for p, _ in SENSITIVE_PATHS if p not in ("config.json",)}
+
 
 class SensitiveFiles(BaseCheck):
-    """Check for exposed sensitive files and directories"""
-    
+    """Check for exposed sensitive files and directories (Async)."""
+
     @property
     def vuln_type(self) -> VulnType:
         return VulnType.SENSITIVE_FILES
 
-    def check(self, url: str, content: str, forms: List[BeautifulSoup]) -> List[Vulnerability]:
+    async def check(self, url: str, content: str, forms: List[BeautifulSoup]) -> List[Vulnerability]:
         vulns = []
         base_url = url.rstrip("/")
-        
+
         for path, description in SENSITIVE_PATHS:
             try:
                 probe_url = f"{base_url}/{path}"
-                resp = self.session.get(probe_url, timeout=5, follow_redirects=False)
-                
-                # Only flag if we get a 200 OK with actual content
+                # We don't follow redirects to avoid false positives on login pages
+                resp = await self.client.get(probe_url, timeout=5, follow_redirects=False)
+
+                # Only flag HTTP 200 with actual content
                 if resp.status_code == 200 and len(resp.text) > 0:
-                    # Avoid false positives — skip if it's a generic error/404 page
-                    if self._looks_like_real_content(path, resp.text):
+                    if self._looks_like_real_content(path, resp):
                         severity = self._get_severity(path)
                         vuln = self._create_vuln(
                             url=probe_url,
@@ -67,25 +71,39 @@ class SensitiveFiles(BaseCheck):
                             confidence="Medium"
                         )
                         vulns.append(vuln)
-                        
+
             except Exception as e:
                 logger.debug(f"Sensitive file probe failed for {path}: {e}")
-                
+
         return vulns
 
-    def _looks_like_real_content(self, path: str, text: str) -> bool:
-        """Basic heuristic to avoid false positives from custom 404 pages."""
+    def _looks_like_real_content(self, path: str, resp: httpx.Response) -> bool:
+        """
+        Heuristic to avoid false positives from custom 404 pages.
+        """
+        text = resp.text
+
         if len(text) < 10:
             return False
-        lower = text.lower()
-        # If the response contains typical 404/error page indicators, skip
-        if any(indicator in lower for indicator in ["page not found", "404", "not found"]):
+
+        # Layer 1: Content-type gating
+        content_type = resp.headers.get("content-type", "").lower()
+        if "json" in content_type and path in _NON_JSON_PATHS:
             return False
-        # For specific file types, check for expected content markers
-        if path.endswith(".env") and "=" in text:
-            return True
-        if "git" in path and ("ref:" in text or "[core]" in text):
-            return True
+
+        # Layer 2: HTML error-page string matching
+        lower = text.lower()
+        if any(indicator in lower for indicator in [
+            "page not found", "404 not found", "not found", "error 404",
+        ]):
+            return False
+
+        # Layer 3: File-specific content validation
+        if path.endswith(".env") and "=" not in text:
+            return False
+        if "git" in path and "ref:" not in text and "[core]" not in text:
+            return False
+
         return True
 
     def _get_severity(self, path: str) -> tuple:

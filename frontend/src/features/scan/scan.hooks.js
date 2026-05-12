@@ -87,8 +87,9 @@ export function useScanResults(scanId, isScanning) {
   return useQuery({
     queryKey: ["scanResults", scanId],
     queryFn: () => scanApi.getResults(scanId),
-    enabled: !!scanId && !isScanning,
-    // Refetch once when scan completes
-    staleTime: 5000,
+    enabled: !!scanId,
+    // Refetch every 3s while scanning for live results, stop after completion
+    refetchInterval: isScanning ? 3000 : false,
+    staleTime: isScanning ? 0 : 5000,
   });
 }

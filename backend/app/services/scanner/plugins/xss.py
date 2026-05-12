@@ -12,7 +12,7 @@ class ReflectedXSS(BaseCheck):
     def vuln_type(self) -> VulnType:
         return VulnType.XSS
 
-    def check(self, url: str, content: str, forms: List[BeautifulSoup]) -> List[Vulnerability]:
+    async def check(self, url: str, content: str, forms: List[BeautifulSoup]) -> List[Vulnerability]:
         vulns = []
         payloads = [
             ("<script>alert('XSS')</script>", "script tag injection"),
@@ -50,9 +50,9 @@ class ReflectedXSS(BaseCheck):
                             
                     try:
                         if method == "post":
-                            resp = self.session.post(target_url, data=data, timeout=5)
+                            resp = await self.client.post(target_url, data=data, timeout=5)
                         else:
-                            resp = self.session.get(target_url, params=data, timeout=5)
+                            resp = await self.client.get(target_url, params=data, timeout=5)
                             
                         if payload in resp.text:
                             vuln = self._create_vuln(

@@ -2,6 +2,85 @@ import React from "react";
 import { useScanResults, useScanStatus } from "../scan/scan.hooks";
 import { FindingsTable } from "./FindingsTable";
 import { Loader2, Shield, Download, BarChart3 } from "lucide-react";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  Legend,
+} from "recharts";
+
+const SEVERITY_COLORS = {
+  Critical: "#ef4444",
+  High: "#f97316",
+  Medium: "#eab308",
+  Low: "#22c55e",
+  Info: "#3b82f6",
+};
+
+function SeverityChart({ stats }) {
+  const chartData = [
+    { name: "Critical", value: stats.critical, color: SEVERITY_COLORS.Critical },
+    { name: "High", value: stats.high, color: SEVERITY_COLORS.High },
+    { name: "Medium", value: stats.medium, color: SEVERITY_COLORS.Medium },
+    { name: "Low", value: stats.low, color: SEVERITY_COLORS.Low },
+    { name: "Info", value: stats.info, color: SEVERITY_COLORS.Info },
+  ].filter((d) => d.value > 0);
+
+  if (chartData.length === 0) return null;
+
+  return (
+    <div className="bg-slate-900/50 rounded-2xl border border-slate-800 p-4">
+      <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+        <BarChart3 className="w-3.5 h-3.5" />
+        Severity Distribution
+      </h3>
+      <ResponsiveContainer width="100%" height={180}>
+        <PieChart>
+          <Pie
+            data={chartData}
+            cx="50%"
+            cy="50%"
+            innerRadius={45}
+            outerRadius={70}
+            paddingAngle={3}
+            dataKey="value"
+            animationBegin={0}
+            animationDuration={600}
+          >
+            {chartData.map((entry, index) => (
+              <Cell
+                key={`cell-${index}`}
+                fill={entry.color}
+                stroke="transparent"
+                style={{ filter: `drop-shadow(0 0 4px ${entry.color}40)` }}
+              />
+            ))}
+          </Pie>
+          <Tooltip
+            contentStyle={{
+              backgroundColor: "#0f172a",
+              border: "1px solid #1e293b",
+              borderRadius: "0.75rem",
+              fontSize: "0.75rem",
+              color: "#e2e8f0",
+            }}
+            formatter={(value, name) => [`${value} finding${value !== 1 ? "s" : ""}`, name]}
+          />
+          <Legend
+            verticalAlign="bottom"
+            iconType="circle"
+            iconSize={8}
+            formatter={(value) => (
+              <span className="text-xs text-slate-400">{value}</span>
+            )}
+          />
+        </PieChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
 
 export function FindingsDashboard({ scanId }) {
   const { data: status } = useScanStatus(scanId);
@@ -48,7 +127,7 @@ export function FindingsDashboard({ scanId }) {
     );
   }
 
-  if (isScanning) {
+  if (isScanning && (!results || results.length === 0)) {
     return (
       <div className="flex flex-col items-center justify-center p-20 text-slate-500">
         <div className="relative mb-6">
@@ -59,7 +138,7 @@ export function FindingsDashboard({ scanId }) {
         </div>
         <p className="text-lg font-medium text-slate-300">Scan In Progress</p>
         <p className="text-sm mt-1 text-slate-500">
-          Results will appear here upon completion
+          Results will appear here as they are discovered
         </p>
         {status?.pages_scanned > 0 && (
           <p className="text-xs mt-3 text-cyan-400 font-mono">
@@ -70,7 +149,7 @@ export function FindingsDashboard({ scanId }) {
     );
   }
 
-  if (isLoading) {
+  if (isLoading && !results) {
     return (
       <div className="flex flex-col items-center justify-center p-20 text-slate-500 animate-pulse">
         <Loader2 className="w-8 h-8 mb-4 animate-spin text-cyan-500" />
@@ -81,6 +160,19 @@ export function FindingsDashboard({ scanId }) {
 
   return (
     <div className="space-y-6">
+      {/* Scanning indicator when results are streaming in */}
+      {isScanning && results && results.length > 0 && (
+        <div className="flex items-center gap-2 px-4 py-2 bg-cyan-500/5 border border-cyan-500/20 rounded-xl text-xs text-cyan-400 font-medium">
+          <div className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse" />
+          Scan in progress — findings are updating live
+          {status?.pages_scanned > 0 && (
+            <span className="ml-auto font-mono text-slate-500">
+              {status.pages_scanned} pages scanned
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
         {[
@@ -104,6 +196,9 @@ export function FindingsDashboard({ scanId }) {
           </div>
         ))}
       </div>
+
+      {/* Severity Chart */}
+      {stats.total > 0 && <SeverityChart stats={stats} />}
 
       {/* Actions Bar */}
       {results && results.length > 0 && (

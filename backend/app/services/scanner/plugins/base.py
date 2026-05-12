@@ -9,10 +9,10 @@ import time
 logger = logging.getLogger(__name__)
 
 class BaseCheck(ABC):
-    """Base class for all vulnerability check plugins"""
+    """Base class for all vulnerability check plugins (Asynchronous)"""
     
-    def __init__(self, session: httpx.Client):
-        self.session = session
+    def __init__(self, client: httpx.AsyncClient):
+        self.client = client
 
     @property
     @abstractmethod
@@ -20,9 +20,9 @@ class BaseCheck(ABC):
         pass
 
     @abstractmethod
-    def check(self, url: str, content: str, forms: List[BeautifulSoup]) -> List[Vulnerability]:
+    async def check(self, url: str, content: str, forms: List[BeautifulSoup]) -> List[Vulnerability]:
         """
-        Perform the vulnerability check.
+        Perform the vulnerability check asynchronously.
         :param url: The URL being scanned
         :param content: The HTML content of the page
         :param forms: List of forms found on the page
