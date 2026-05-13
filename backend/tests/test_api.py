@@ -1,5 +1,18 @@
+import os
+os.environ["SENTINAL_API_KEY"] = "ci_test_key_abcdefghijklmnop12345678"
+
 from fastapi.testclient import TestClient
 from app.main import app
+from app.services.scanner.manager import scan_manager
+import pytest
+
+@pytest.fixture(autouse=True)
+def cleanup_scans():
+    """Clear the scan manager state between tests."""
+    scan_manager.scans.clear()
+    scan_manager.engines.clear()
+    scan_manager.logs.clear()
+    yield
 
 client = TestClient(app)
 
@@ -9,7 +22,7 @@ def test_health_check():
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "ok"
-    assert data["version"] == "2.0.0"
+    assert data["version"] == "2.1.0"
 
 # ─── Auth Tests ────────────────────────────────────────────────────────
 def test_scan_without_api_key_returns_401():
@@ -29,7 +42,7 @@ def test_scan_with_wrong_api_key_returns_403():
 
 def test_scan_with_valid_api_key():
     """Requests with the correct API key should succeed."""
-    headers = {"X-API-Key": "dev_api_key_12345"}
+    headers = {"X-API-Key": "ci_test_key_abcdefghijklmnop12345678"}
     response = client.post(
         "/api/v1/scan/", 
         json={"target_url": "https://example.com"}, 
@@ -43,7 +56,7 @@ def test_scan_with_valid_api_key():
 # ─── Scan Lifecycle ────────────────────────────────────────────────────
 def test_scan_lifecycle():
     """Full lifecycle: start → status → results → logs."""
-    headers = {"X-API-Key": "dev_api_key_12345"}
+    headers = {"X-API-Key": "ci_test_key_abcdefghijklmnop12345678"}
     
     # Start
     start_resp = client.post(
@@ -71,14 +84,14 @@ def test_scan_lifecycle():
 
 def test_scan_not_found():
     """Non-existent scan ID should return 404."""
-    headers = {"X-API-Key": "dev_api_key_12345"}
+    headers = {"X-API-Key": "ci_test_key_abcdefghijklmnop12345678"}
     response = client.get("/api/v1/scan/nonexistent-id-123", headers=headers)
     assert response.status_code == 404
 
 # ─── URL Validation ────────────────────────────────────────────────────
 def test_scan_rejects_invalid_url():
     """URLs not starting with http(s) should be rejected."""
-    headers = {"X-API-Key": "dev_api_key_12345"}
+    headers = {"X-API-Key": "ci_test_key_abcdefghijklmnop12345678"}
     response = client.post(
         "/api/v1/scan/", 
         json={"target_url": "ftp://example.com"}, 
@@ -88,6 +101,6 @@ def test_scan_rejects_invalid_url():
 
 def test_scan_rejects_no_url():
     """Missing target_url should be rejected."""
-    headers = {"X-API-Key": "dev_api_key_12345"}
+    headers = {"X-API-Key": "ci_test_key_abcdefghijklmnop12345678"}
     response = client.post("/api/v1/scan/", json={}, headers=headers)
     assert response.status_code == 422
