@@ -100,7 +100,7 @@ class SecurityHeaders(BaseCheck):
                         evidence=(
                             f"Response at {url} does not include the "
                             f"'{header_name}' header. This misconfiguration "
-                            f"likely affects the entire site."
+                            "likely affects the entire site."
                         ),
                         severity_score=config["severity"],
                         severity_level=config["level"],  # type: ignore

@@ -74,11 +74,11 @@ class ScannerEngine:
     async def run(self) -> List[Vulnerability]:
         """Execute the full async scan pipeline."""
         start_time = time.time()
-        logger.info(f"{'='*60}")
-        logger.info(f"VULNERABILITY SCAN STARTED (ASYNC ENGINE)")
+        logger.info('=' * 60)
+        logger.info("VULNERABILITY SCAN STARTED (ASYNC ENGINE)")
         logger.info(f"Target: {self.config.target_url}")
         logger.info(f"Max Pages: {self.config.max_pages} | Workers: {self.config.workers}")
-        logger.info(f"{'='*60}")
+        logger.info('=' * 60)
         
         try:
             await self._init_plugins()
@@ -137,7 +137,7 @@ class ScannerEngine:
             
             # Summary
             duration = time.time() - start_time
-            logger.info(f"{'='*60}")
+            logger.info('=' * 60)
             logger.info(f"SCAN COMPLETE in {duration:.1f}s")
             logger.info(f"Pages scanned: {self._pages_scanned}")
             logger.info(f"Vulnerabilities found: {len(self.vulnerabilities)}")
@@ -148,7 +148,7 @@ class ScannerEngine:
                 severity_counts[level] = severity_counts.get(level, 0) + 1
             for level, count in sorted(severity_counts.items()):
                 logger.info(f"  {level}: {count}")
-            logger.info(f"{'='*60}")
+            logger.info('=' * 60)
             
         finally:
             await self.crawler.close()
