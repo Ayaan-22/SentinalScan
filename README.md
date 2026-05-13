@@ -50,13 +50,13 @@ The core engine has been fully migrated from a synchronous thread-pooled model t
 
 ## 🛡️ Vulnerability Coverage
 
-| Plugin                     | Vuln Type             | Detection Logic                                                                           |
-| :------------------------- | :-------------------- | :---------------------------------------------------------------------------------------- |
-| **Reflected XSS**    | Client-Side           | Injects payloads into forms/params and verifies execution/reflection in the DOM.          |
-| **SQL Injection**    | Injection             | Tests for error signatures (MySQL, PG, SQLite) and time-based sleep verification.         |
-| **Sensitive Files**  | Information Leak      | Probes for common exposures like `.env`, `.git`, `.bak`, and configuration backups. |
-| **CSRF Check**       | Broken Access Control | Analyzes state-changing forms for missing or weak anti-forgery token implementations.     |
-| **Security Headers** | Configuration         | Audits `HSTS`, `Content-Security-Policy`, `Referrer-Policy`, and `CORS` settings. |
+| Plugin | Vuln Type | Detection Logic |
+| :--- | :--- | :--- |
+| **Reflected XSS** | Client-Side | Injects payloads into forms/params and verifies execution/reflection in the DOM. |
+| **SQL Injection** | Injection | Tests for error signatures (MySQL, PG, SQLite) and time-based sleep verification. |
+| **Sensitive Files** | Information Leak | Probes for common exposures like `.env`, `.git`, `.bak`, and configuration backups. |
+| **CSRF Check** | Broken Access Control | Analyzes state-changing forms for missing or weak anti-forgery token implementations. |
+| **Security Headers** | Configuration | Audits `HSTS`, `Content-Security-Policy`, `Referrer-Policy`, and `CORS` settings. |
 
 ---
 
