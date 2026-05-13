@@ -6,6 +6,8 @@ from pydantic import field_validator
 class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     PROJECT_NAME: str = "SentinalScan"
+    HOST: str = "127.0.0.1"
+    PORT: int = 8000
     
     # Security
     API_KEY: str = "changeme_in_production"
