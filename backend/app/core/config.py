@@ -1,7 +1,7 @@
 
 from typing import List, Union
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import AnyHttpUrl, field_validator
+from pydantic import field_validator
 
 class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"

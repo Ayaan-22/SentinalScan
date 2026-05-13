@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException
 from typing import List, Dict
 from app.models.scan import ScanRequest, ScanResponse
 from app.services.scanner.manager import scan_manager

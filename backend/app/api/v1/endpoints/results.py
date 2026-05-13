@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from typing import List, Any
+from typing import List
 from app.models.vulnerability import Vulnerability
 from app.services.scanner.manager import scan_manager
 from app.core.security import get_api_key
