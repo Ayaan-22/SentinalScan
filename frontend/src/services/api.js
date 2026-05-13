@@ -19,6 +19,11 @@ export const scanApi = {
     const { data } = await api.post("/scan/", config);
     return data;
   },
+  
+  list: async () => {
+    const { data } = await api.get("/scan/");
+    return data;
+  },
 
   stop: async (scanId) => {
     if (!scanId) throw new Error("Scan ID required to stop scan");

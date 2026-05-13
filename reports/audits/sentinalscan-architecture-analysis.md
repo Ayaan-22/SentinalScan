@@ -428,10 +428,14 @@ Executive-ready PDF with per-finding code fixes, CVSS 3.1 vectors, and complianc
 | Crawl 50 pages, 5 workers | ~90s (sequential) | <20s (concurrent) |
 | SQLi tests, 3 forms | ~27s (sequential) | <9s (concurrent) |
 | Sensitive file probe (8 files) | ~12s (sequential) | <3s (concurrent) |
-| API response to /scan/ | Blocks until done | <50ms (enqueue) |
+### Phase 3 — Shipped (UI/UX & Monitoring)
+- ✅ Scan history sidebar for session persistence (in-process)
+- ✅ Status notifications and toast system
+- ✅ Recharts-powered severity distribution analytics
+- ✅ JSON report export functionality
+- ✅ v2.1.0 frontend version parity
 
-### Phase 3 — Production Features (Weeks 5–10, ~80 hrs)
-
+### Phase 4 — Production Scaling (Next Target)
 - Celery job queue — API returns `scan_id` in <50ms; worker picks up task
 - `ScanLogHandler` → Redis pub/sub per scan channel (eliminates log race)
 - Playwright crawler behind `use_browser: bool = False` flag
@@ -442,7 +446,7 @@ Executive-ready PDF with per-finding code fixes, CVSS 3.1 vectors, and complianc
 - `selectolax` for link extraction (replace BeautifulSoup in hot path)
 - `structlog` JSON logging with bound `scan_id` context
 
-### Phase 4 — Product Layer (Weeks 11–18, ~100 hrs)
+### Phase 5 — Product Layer (Weeks 11–18, ~100 hrs)
 
 - JWT multi-user auth via `fastapi-users`
 - RBAC: owner / analyst / viewer roles per team

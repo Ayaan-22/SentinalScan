@@ -1,8 +1,11 @@
 import React, { useState, Suspense, lazy } from "react";
-import { Shield, Activity, Github, Heart } from "lucide-react";
+import { Shield, Activity, Github, Heart, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
+import { clsx } from "clsx";
 import { ScanForm } from "../features/scan/ScanForm";
 import { useScanStatus, useStopScan } from "../features/scan/scan.hooks";
 import { LiveLogs } from "../features/scan-logs/LiveLogs";
+import { ScanHistory } from "../features/scan/ScanHistory";
+import { AnimatePresence, motion as Motion } from "framer-motion";
 
 // Lazy load the dashboard
 const FindingsDashboard = lazy(() =>
@@ -20,16 +23,40 @@ export default function App() {
   const isConnected = !!statusData && !isError;
 
   const [activeTab, setActiveTab] = useState("findings");
+  const [toast, setToast] = useState(null);
   const stopScanMutation = useStopScan();
+
+  const showToast = (message, type = "info") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
+  };
 
   const handleScanStarted = (data) => {
     setScanId(data.scan_id);
-    setActiveTab("logs"); // Switch to logs on start
+    setActiveTab("logs");
+    showToast("Vulnerability scan initialized", "success");
   };
 
   const handleStop = () => {
-    if (scanId) stopScanMutation.mutate(scanId);
+    if (scanId) {
+      stopScanMutation.mutate(scanId);
+      showToast("Scan termination requested", "warning");
+    }
   };
+
+  const handleSelectScan = (id) => {
+    setScanId(id);
+    setActiveTab("findings");
+  };
+
+  // Watch for scan completion
+  React.useEffect(() => {
+    if (statusData?.status === "completed" && scanId) {
+      showToast("Scan completed successfully", "success");
+    } else if (statusData?.status === "failed" && scanId) {
+      showToast("Scan failed", "error");
+    }
+  }, [statusData?.status, scanId]);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-cyan-500/30 flex flex-col">
@@ -80,7 +107,7 @@ export default function App() {
 
             {/* Version badge */}
             <span className="hidden sm:inline text-[10px] font-mono text-slate-500 border border-slate-800 px-2 py-1 rounded-lg">
-              v2.0.0
+              v2.1.0
             </span>
           </div>
         </header>
@@ -97,6 +124,14 @@ export default function App() {
                 onScanStarted={handleScanStarted}
                 onStop={handleStop}
                 isScanning={isScanning}
+              />
+            </div>
+            
+            {/* Scan History Sidebar */}
+            <div className="p-5 md:p-6 bg-slate-900/30 backdrop-blur-md border border-slate-800/50 rounded-2xl">
+              <ScanHistory 
+                activeScanId={scanId} 
+                onSelectScan={handleSelectScan} 
               />
             </div>
 
@@ -203,7 +238,7 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <div className="flex items-center gap-2 text-xs text-slate-500">
             <Shield className="w-3.5 h-3.5 text-slate-600" />
-            <span>SentinalScan v2.0.0 — Automated Vulnerability Assessment</span>
+            <span>SentinalScan v2.1.0 — Automated Vulnerability Assessment</span>
           </div>
           <div className="flex items-center gap-4 text-xs text-slate-600">
             <span className="flex items-center gap-1">
@@ -212,6 +247,32 @@ export default function App() {
           </div>
         </div>
       </footer>
+
+      {/* Custom Toast System */}
+      <AnimatePresence>
+        {toast && (
+          <Motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            className="fixed bottom-8 right-8 z-[100]"
+          >
+            <div className={clsx(
+              "px-6 py-3 rounded-2xl shadow-2xl border backdrop-blur-xl flex items-center gap-3",
+              toast.type === "success" && "bg-green-500/10 border-green-500/50 text-green-400",
+              toast.type === "error" && "bg-red-500/10 border-red-500/50 text-red-400",
+              toast.type === "warning" && "bg-orange-500/10 border-orange-500/50 text-orange-400",
+              toast.type === "info" && "bg-cyan-500/10 border-cyan-500/50 text-cyan-400"
+            )}>
+              {toast.type === "success" && <CheckCircle2 className="w-5 h-5" />}
+              {toast.type === "error" && <XCircle className="w-5 h-5" />}
+              {toast.type === "warning" && <AlertCircle className="w-5 h-5" />}
+              {toast.type === "info" && <Activity className="w-5 h-5" />}
+              <span className="text-sm font-medium">{toast.message}</span>
+            </div>
+          </Motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

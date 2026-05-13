@@ -104,3 +104,10 @@ def test_scan_rejects_no_url():
     headers = {"X-API-Key": "ci_test_key_abcdefghijklmnop12345678"}
     response = client.post("/api/v1/scan/", json={}, headers=headers)
     assert response.status_code == 422
+
+def test_list_scans_returns_array():
+    """GET / should return a list of scans."""
+    headers = {"X-API-Key": "ci_test_key_abcdefghijklmnop12345678"}
+    response = client.get("/api/v1/scan/", headers=headers)
+    assert response.status_code == 200
+    assert isinstance(response.json(), list)

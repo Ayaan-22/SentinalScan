@@ -6,6 +6,13 @@ from app.core.security import get_api_key
 
 router = APIRouter()
 
+@router.get("/", response_model=List[ScanResponse], dependencies=[Depends(get_api_key)])
+async def list_scans():
+    """
+    List all scan sessions, sorted by start time (newest first).
+    """
+    return scan_manager.get_all_scans()
+
 @router.post("/", response_model=ScanResponse, dependencies=[Depends(get_api_key)])
 async def start_scan(request: ScanRequest):
     """

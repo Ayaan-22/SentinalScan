@@ -93,3 +93,11 @@ export function useScanResults(scanId, isScanning) {
     staleTime: isScanning ? 0 : 5000,
   });
 }
+
+export function useAllScans() {
+  return useQuery({
+    queryKey: ["allScans"],
+    queryFn: () => scanApi.list(),
+    refetchInterval: 10000, // Refresh list every 10s
+  });
+}

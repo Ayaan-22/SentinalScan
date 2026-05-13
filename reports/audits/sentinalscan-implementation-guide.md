@@ -7,11 +7,12 @@
 
 ## Table of Contents
 
-1. [Async Migration — 4 Sub-Steps](#1-async-migration--4-sub-steps)
-2. [Test Strategy](#2-test-strategy)
-3. [Security Middleware](#3-security-middleware)
-4. [Redis State Store](#4-redis-state-store)
-5. [Celery Job Queue](#5-celery-job-queue)
+1. [Async Migration — ✅ SHIPPED](#1-async-migration--shipped)
+2. [Test Strategy — ✅ IMPLEMENTED](#2-test-strategy--implemented)
+3. [Security Middleware — ✅ SHIPPED](#3-security-middleware--shipped)
+4. [UI/UX & Monitoring — ✅ SHIPPED](#4-uiux--monitoring--shipped)
+5. [Redis State Store — PENDING](#5-redis-state-store--pending)
+6. [Celery Job Queue — PENDING](#6-celery-job-queue--pending)
 6. [AI Triage Integration](#6-ai-triage-integration)
 7. [Postgres Schema + Diff Engine](#7-postgres-schema--diff-engine)
 8. [CI/CD Pipeline](#8-cicd-pipeline)
@@ -383,7 +384,7 @@ async def _run_scan(self, scan_id: str, request: ScanRequest):
 
 ---
 
-## 2. Test Strategy
+## 2. Test Strategy — ✅ IMPLEMENTED
 
 Write in risk order, not coverage order. SSRF validation first — highest regression cost.
 
@@ -735,7 +736,34 @@ async def lifespan(app):
 
 ---
 
-## 4. Redis State Store
+## 4. UI/UX & Monitoring — ✅ SHIPPED
+
+### Custom Scan History Sidebar
+
+Native React component that polls the new `GET /api/v1/scan/` endpoint to provide session persistence without a database (in-process memory).
+
+```jsx
+// frontend/src/features/scan/ScanHistory.jsx
+export function ScanHistory({ activeScanId, onSelectScan }) {
+  const { data: scans, isLoading } = useAllScans();
+  // ... renders scan list with status icons ...
+}
+```
+
+### Real-time Toast Notifications
+
+State-based notification system in `App.jsx` using `framer-motion` for smooth entry/exit animations. Triggers on scan start, success, failure, and stop.
+
+```jsx
+const showToast = (message, type = "info") => {
+  setToast({ message, type });
+  setTimeout(() => setToast(null), 4000);
+};
+```
+
+---
+
+## 5. Redis State Store — PENDING
 
 ```python
 # backend/app/store.py
