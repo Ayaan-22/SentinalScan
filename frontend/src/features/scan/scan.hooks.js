@@ -1,6 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { scanApi } from "../../services/api";
 
+export function useBackendHealth() {
+  return useQuery({
+    queryKey: ["backendHealth"],
+    queryFn: () => scanApi.health(),
+    refetchInterval: 5000,
+    retry: 1,
+  });
+}
+
 export function useScanStatus(scanId) {
   return useQuery({
     queryKey: ["scanStatus", scanId],
@@ -35,6 +44,7 @@ export function useStartScan() {
         timeout: config.timeout || 15,
         verify_ssl: config.verify_ssl ?? true,
         obey_robots: config.obey_robots ?? true,
+        allow_private_targets: config.allow_private_targets ?? false,
       };
 
       // Parse advanced options if present
@@ -49,7 +59,7 @@ export function useStartScan() {
       }
       if (config.headers_str) {
         const headers = {};
-        config.headers_str.split(";").forEach((part) => {
+        config.headers_str.split(/\n|;/).forEach((part) => {
           const [k, v] = part.split(":");
           if (k?.trim() && v?.trim()) headers[k.trim()] = v.trim();
         });
@@ -57,7 +67,7 @@ export function useStartScan() {
       }
       if (config.exclude_paths_str) {
         const paths = config.exclude_paths_str
-          .split(",")
+          .split(/,|\n/)
           .map((p) => p.trim())
           .filter(Boolean);
         if (paths.length > 0) payload.exclude_paths = paths;
@@ -68,6 +78,7 @@ export function useStartScan() {
     onSuccess: () => {
       // Invalidate any stale scan queries
       queryClient.invalidateQueries({ queryKey: ["scanStatus"] });
+      queryClient.invalidateQueries({ queryKey: ["allScans"] });
     },
   });
 }
@@ -79,6 +90,7 @@ export function useStopScan() {
     onSuccess: (data, scanId) => {
       queryClient.invalidateQueries({ queryKey: ["scanStatus", scanId] });
       queryClient.invalidateQueries({ queryKey: ["scanResults", scanId] });
+      queryClient.invalidateQueries({ queryKey: ["allScans"] });
     },
   });
 }
@@ -98,6 +110,6 @@ export function useAllScans() {
   return useQuery({
     queryKey: ["allScans"],
     queryFn: () => scanApi.list(),
-    refetchInterval: 10000, // Refresh list every 10s
+    refetchInterval: 5000,
   });
 }

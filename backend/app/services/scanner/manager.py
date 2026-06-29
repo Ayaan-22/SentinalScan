@@ -47,8 +47,10 @@ class ScanManager:
     def __init__(self):
         self.scans: Dict[str, ScanResponse] = {}
         self.engines: Dict[str, ScannerEngine] = {}
+        self.tasks: Dict[str, asyncio.Task] = {}
         self.logs: Dict[str, List[Dict]] = {}
         self._scan_lock = asyncio.Lock()
+        self._results_lock = asyncio.Lock()
 
     async def create_scan(self, request: ScanRequest) -> ScanResponse:
         """Create a new scan session and launch it as an async background task."""
@@ -73,9 +75,32 @@ class ScanManager:
 
             # Launch native coroutine
             logger.info(f"Enqueuing async scan task for {scan_id}")
-            asyncio.create_task(self._run_scan(scan_id, request))
+            task = asyncio.create_task(self._run_scan(scan_id, request))
+            self.tasks[scan_id] = task
 
         return scan_response
+
+    async def _append_finding(self, scan_id: str, finding) -> None:
+        async with self._results_lock:
+            scan = self.scans.get(scan_id)
+            if not scan:
+                return
+            fingerprint = (finding.url, finding.vuln_type.value, finding.description)
+            existing = {
+                (item.url, item.vuln_type.value, item.description)
+                for item in scan.results
+            }
+            if fingerprint not in existing:
+                scan.results.append(finding)
+                scan.vulnerabilities_count = len(scan.results)
+                self.logs.setdefault(scan_id, []).append({
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "level": "INFO",
+                    "message": (
+                        f"Finding discovered: {finding.description} "
+                        f"({finding.severity_level.value}, {finding.url})"
+                    )
+                })
 
     async def _run_scan(self, scan_id: str, request: ScanRequest):
         """Native async execution loop for the scanner engine."""
@@ -87,12 +112,22 @@ class ScanManager:
         handler = ScanLogHandler(scan_logs)
         handler.setFormatter(logging.Formatter('%(message)s'))
         
-        scanner_logger = logging.getLogger('app.services.scanner')
-        scanner_logger.addHandler(handler)
-        scanner_logger.setLevel(logging.DEBUG)
+        captured_loggers = [
+            logging.getLogger("app.services.scanner"),
+            logging.getLogger("httpx"),
+        ]
+        previous_levels = {captured_logger: captured_logger.level for captured_logger in captured_loggers}
+        for captured_logger in captured_loggers:
+            captured_logger.addHandler(handler)
+            captured_logger.setLevel(logging.DEBUG if captured_logger.name.startswith("app.") else logging.INFO)
+        scan_logs.append({
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "level": "INFO",
+            "message": f"Scan task started for {request.target_url}"
+        })
         
         try:
-            engine = ScannerEngine(request)
+            engine = ScannerEngine(request, on_finding=lambda finding: self._append_finding(scan_id, finding))
             self.engines[scan_id] = engine
             
             # PHASE 2: Native async engine run (P0 Migration)
@@ -100,13 +135,35 @@ class ScanManager:
             
             scan.vulnerabilities_count = len(vulns)
             scan.pages_scanned = engine.pages_scanned
-            scan.status = ScanStatus.COMPLETED
+            if scan.status != ScanStatus.STOPPED:
+                scan.status = ScanStatus.COMPLETED
             scan.end_time = datetime.now(timezone.utc)
             scan.results = vulns
+            scan.vulnerabilities_count = len(scan.results)
+            scan_logs.append({
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "level": "INFO",
+                "message": (
+                    f"Scan completed: {scan.pages_scanned} pages scanned, "
+                    f"{scan.vulnerabilities_count} findings"
+                )
+            })
             
+        except asyncio.CancelledError:
+            logger.info(f"Scan {scan_id} stopped by user")
+            scan.status = ScanStatus.STOPPED
+            if scan_id in self.engines:
+                scan.pages_scanned = self.engines[scan_id].pages_scanned
+            scan.end_time = datetime.now(timezone.utc)
+            scan_logs.append({
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "level": "INFO",
+                "message": "Scan stopped by user"
+            })
         except Exception as e:
             logger.error(f"Scan {scan_id} failed: {e}", exc_info=True)
-            scan.status = ScanStatus.FAILED
+            if scan.status != ScanStatus.STOPPED:
+                scan.status = ScanStatus.FAILED
             scan.end_time = datetime.now(timezone.utc)
             scan_logs.append({
                 "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -114,25 +171,63 @@ class ScanManager:
                 "message": f"Scan failed: {sanitize_log(str(e))}"
             })
         finally:
-            scanner_logger.removeHandler(handler)
+            for captured_logger in captured_loggers:
+                captured_logger.removeHandler(handler)
+                captured_logger.setLevel(previous_levels[captured_logger])
             self.engines.pop(scan_id, None)
+            self.tasks.pop(scan_id, None)
 
     def get_scan(self, scan_id: str) -> Optional[ScanResponse]:
         return self.scans.get(scan_id)
 
     def get_logs(self, scan_id: str) -> List[Dict]:
-        return self.logs.get(scan_id, [])
+        logs = self.logs.get(scan_id, [])
+        if logs:
+            return logs
+
+        scan = self.scans.get(scan_id)
+        if not scan:
+            return []
+
+        synthetic_logs = [{
+            "timestamp": scan.start_time.isoformat(),
+            "level": "INFO",
+            "message": f"Scan record loaded for {scan.target_url} ({scan.status.value})",
+        }]
+        if scan.end_time:
+            synthetic_logs.append({
+                "timestamp": scan.end_time.isoformat(),
+                "level": "INFO" if scan.status == ScanStatus.COMPLETED else "WARNING",
+                "message": (
+                    f"Scan {scan.status.value}: {scan.pages_scanned} pages scanned, "
+                    f"{scan.vulnerabilities_count} findings"
+                ),
+            })
+        return synthetic_logs
 
     def get_all_scans(self) -> List[ScanResponse]:
         return sorted(self.scans.values(), key=lambda s: s.start_time, reverse=True)
 
-    def stop_scan(self, scan_id: str) -> bool:
+    async def stop_scan(self, scan_id: str) -> bool:
         if scan_id in self.engines:
             self.engines[scan_id].stop()
         if scan_id in self.scans:
-            if self.scans[scan_id].status == ScanStatus.RUNNING:
-                self.scans[scan_id].status = ScanStatus.STOPPED
-                self.scans[scan_id].end_time = datetime.now(timezone.utc)
+            if self.scans[scan_id].status in (ScanStatus.RUNNING, ScanStatus.PENDING):
+                scan = self.scans[scan_id]
+                scan.status = ScanStatus.STOPPED
+                scan.end_time = datetime.now(timezone.utc)
+                self.logs.setdefault(scan_id, []).append({
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "level": "INFO",
+                    "message": "Scan stopped by user"
+                })
+                task = self.tasks.get(scan_id)
+                if task and not task.done():
+                    task.cancel()
+                    try:
+                        await task
+                    except asyncio.CancelledError:
+                        pass
                 return True
         return False
 

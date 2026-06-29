@@ -1,7 +1,8 @@
 from pydantic import BaseModel, Field, field_validator
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Any
 from enum import Enum
 from datetime import datetime
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 from .vulnerability import Vulnerability
 
 class ScanStatus(str, Enum):
@@ -17,19 +18,31 @@ class ScanRequest(BaseModel):
     workers: int = Field(5, ge=1, le=20, description="Concurrent workers")
     verify_ssl: bool = True
     obey_robots: bool = True
+    allow_private_targets: bool = False
     timeout: int = Field(15, ge=1, le=60)
     
     # Optional advanced config
     auth_token: Optional[str] = None
     cookies: Optional[Dict[str, str]] = None
     headers: Optional[Dict[str, str]] = None
-    exclude_paths: Optional[List[str]] = None
+    exclude_paths: List[str] = Field(default_factory=list)
 
     @field_validator("target_url")
     def validate_url(cls, v: str) -> str:
-        if not v.startswith(("http://", "https://")):
+        parsed = urlparse(v.strip())
+        if parsed.scheme not in ("http", "https"):
             raise ValueError("URL must start with http:// or https://")
-        return v.rstrip("/")
+        if not parsed.hostname:
+            raise ValueError("URL must include a hostname")
+        netloc = parsed.hostname.lower()
+        if parsed.port and not (
+            (parsed.scheme == "http" and parsed.port == 80)
+            or (parsed.scheme == "https" and parsed.port == 443)
+        ):
+            netloc = f"{netloc}:{parsed.port}"
+        path = parsed.path or "/"
+        query = urlencode(sorted(parse_qsl(parsed.query, keep_blank_values=True)))
+        return urlunparse((parsed.scheme, netloc, path.rstrip("/") or "/", "", query, ""))
 
 class ScanResponse(BaseModel):
     scan_id: str
@@ -39,4 +52,5 @@ class ScanResponse(BaseModel):
     end_time: Optional[datetime] = None
     pages_scanned: int = 0
     vulnerabilities_count: int = 0
-    results: List[Vulnerability] = []
+    results: List[Vulnerability] = Field(default_factory=list)
+    recent_logs: List[Dict[str, Any]] = Field(default_factory=list)

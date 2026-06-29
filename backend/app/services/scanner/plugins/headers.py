@@ -7,7 +7,6 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-# Essential security headers that should be present on every response
 REQUIRED_HEADERS = {
     "X-Content-Type-Options": {
         "expected": "nosniff",
@@ -24,7 +23,7 @@ REQUIRED_HEADERS = {
         "remediation": "Add header: X-Frame-Options: DENY or SAMEORIGIN",
     },
     "Strict-Transport-Security": {
-        "expected": None,  # Just needs to be present
+        "expected": None,
         "severity": 6.0,
         "level": SeverityLevel.MEDIUM,
         "icon": "🟡",
@@ -39,10 +38,10 @@ REQUIRED_HEADERS = {
     },
     "X-XSS-Protection": {
         "expected": None,
-        "severity": 3.0,
+        "severity": 1.0,
         "level": SeverityLevel.LOW,
         "icon": "🔵",
-        "remediation": "Add header: X-XSS-Protection: 1; mode=block (legacy browsers)",
+        "remediation": "X-XSS-Protection is deprecated; rely on a strong Content-Security-Policy instead.",
     },
     "Referrer-Policy": {
         "expected": None,
@@ -89,19 +88,16 @@ class SecurityHeaders(BaseCheck):
                     continue
 
                 header_value = headers.get(header_name)
+                issue = self._header_issue(url, header_name, header_value, config)
 
-                if not header_value:
+                if issue:
                     # Mark as reported at the scan level
                     self._reported_headers.add(header_name)
 
                     vuln = self._create_vuln(
                         url=url,
-                        description=f"Missing security header: {header_name}",
-                        evidence=(
-                            f"Response at {url} does not include the "
-                            f"'{header_name}' header. This misconfiguration "
-                            "likely affects the entire site."
-                        ),
+                        description=issue["description"],
+                        evidence=issue["evidence"],
                         severity_score=config["severity"],
                         severity_level=config["level"],  # type: ignore
                         severity_icon=config["icon"],
@@ -114,3 +110,59 @@ class SecurityHeaders(BaseCheck):
             logger.debug(f"Security headers check failed for {url}: {e}")
 
         return vulns
+
+    def _header_issue(self, url: str, header_name: str, value: str | None, config: dict) -> dict | None:
+        if header_name == "Strict-Transport-Security" and not url.lower().startswith("https://"):
+            return None
+
+        if not value:
+            return {
+                "description": f"Missing security header: {header_name}",
+                "evidence": (
+                    f"Response at {url} does not include the '{header_name}' header. "
+                    "This misconfiguration likely affects the entire site."
+                ),
+            }
+
+        normalized = value.strip().lower()
+
+        if header_name == "X-Content-Type-Options" and normalized != "nosniff":
+            return {
+                "description": "Misconfigured security header: X-Content-Type-Options",
+                "evidence": f"Expected 'nosniff', observed '{value}'.",
+            }
+
+        if header_name == "X-Frame-Options" and normalized not in {"deny", "sameorigin"}:
+            return {
+                "description": "Misconfigured security header: X-Frame-Options",
+                "evidence": f"Expected DENY or SAMEORIGIN, observed '{value}'.",
+            }
+
+        if header_name == "Strict-Transport-Security" and "max-age=" not in normalized:
+            return {
+                "description": "Weak Strict-Transport-Security header",
+                "evidence": f"HSTS header must include max-age, observed '{value}'.",
+            }
+
+        if header_name == "Content-Security-Policy":
+            weak_tokens = ["default-src *", "script-src *", "unsafe-inline", "unsafe-eval"]
+            if any(token in normalized for token in weak_tokens):
+                return {
+                    "description": "Weak Content-Security-Policy header",
+                    "evidence": f"CSP contains unsafe broad source or script policy: '{value}'.",
+                }
+
+        if header_name == "Referrer-Policy":
+            acceptable = {
+                "no-referrer",
+                "same-origin",
+                "strict-origin",
+                "strict-origin-when-cross-origin",
+            }
+            if normalized not in acceptable:
+                return {
+                    "description": "Weak Referrer-Policy header",
+                    "evidence": f"Observed '{value}', expected one of {sorted(acceptable)}.",
+                }
+
+        return None

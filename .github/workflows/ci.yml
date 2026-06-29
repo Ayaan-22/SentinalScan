@@ -7,9 +7,8 @@ on:
     branches: [main]
 
 jobs:
-  # ── Backend ────────────────────────────────────────────────────────────────
   backend:
-    name: Backend — lint, security scan, tests
+    name: Backend
     runs-on: ubuntu-latest
 
     steps:
@@ -33,16 +32,18 @@ jobs:
       - name: Security scan (bandit)
         run: bandit -r backend/app/ -ll --skip B101
 
+      - name: Compile
+        run: cd backend && python -m compileall -q app
+
       - name: Run tests
         env:
           SENTINAL_API_KEY: ${{ secrets.SENTINAL_API_KEY || 'ci_test_key_abcdefghijklmnop12345678' }}
         run: |
           cd backend
-          python -m pytest tests/ -v --tb=short
+          python -m pytest -q
 
-  # ── Frontend ───────────────────────────────────────────────────────────────
   frontend:
-    name: Frontend — lint, type-check, build
+    name: Frontend
     runs-on: ubuntu-latest
 
     steps:

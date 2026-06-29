@@ -11,6 +11,7 @@ def cleanup_scans():
     """Clear the scan manager state between tests."""
     scan_manager.scans.clear()
     scan_manager.engines.clear()
+    scan_manager.tasks.clear()
     scan_manager.logs.clear()
     yield
 
@@ -22,7 +23,7 @@ def test_health_check():
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "ok"
-    assert data["version"] == "2.1.0"
+    assert data["version"] == "2.2.0"
 
 # ─── Auth Tests ────────────────────────────────────────────────────────
 def test_scan_without_api_key_returns_401():
@@ -70,7 +71,7 @@ def test_scan_lifecycle():
     # Status
     status_resp = client.get(f"/api/v1/scan/{scan_id}", headers=headers)
     assert status_resp.status_code == 200
-    assert status_resp.json()["status"] in ["pending", "running", "completed"]
+    assert status_resp.json()["status"] in ["pending", "running", "completed", "stopped"]
     
     # Results
     results_resp = client.get(f"/api/v1/scan/{scan_id}/results", headers=headers)
@@ -111,3 +112,23 @@ def test_list_scans_returns_array():
     response = client.get("/api/v1/scan/", headers=headers)
     assert response.status_code == 200
     assert isinstance(response.json(), list)
+
+
+def test_scan_status_includes_recent_logs():
+    headers = {"X-API-Key": "ci_test_key_abcdefghijklmnop12345678"}
+    start_resp = client.post(
+        "/api/v1/scan/",
+        json={"target_url": "https://example.com"},
+        headers=headers,
+    )
+    scan_id = start_resp.json()["scan_id"]
+    scan_manager.logs[scan_id].append({
+        "timestamp": "2026-06-24T00:00:00+00:00",
+        "level": "INFO",
+        "message": "hello from test",
+    })
+
+    response = client.get(f"/api/v1/scan/{scan_id}", headers=headers)
+
+    assert response.status_code == 200
+    assert response.json()["recent_logs"][-1]["message"] == "hello from test"

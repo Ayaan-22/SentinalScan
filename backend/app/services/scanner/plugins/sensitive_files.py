@@ -4,6 +4,7 @@ from .base import BaseCheck
 from app.models.vulnerability import Vulnerability, VulnType, SeverityLevel
 import logging
 import httpx
+from urllib.parse import urlparse, urlunparse
 
 logger = logging.getLogger(__name__)
 
@@ -37,23 +38,36 @@ _NON_JSON_PATHS = {p for p, _ in SENSITIVE_PATHS if p not in ("config.json",)}
 class SensitiveFiles(BaseCheck):
     """Check for exposed sensitive files and directories (Async)."""
 
+    def __init__(self, client: httpx.AsyncClient):
+        super().__init__(client)
+        self._probed_origins: set[str] = set()
+        self._reported_paths: set[tuple[str, str]] = set()
+
     @property
     def vuln_type(self) -> VulnType:
         return VulnType.SENSITIVE_FILES
 
     async def check(self, url: str, content: str, forms: List[BeautifulSoup]) -> List[Vulnerability]:
         vulns = []
-        base_url = url.rstrip("/")
+        parsed = urlparse(url)
+        origin = urlunparse((parsed.scheme, parsed.netloc, "", "", "", "")).rstrip("/")
+        if origin in self._probed_origins:
+            return vulns
+        self._probed_origins.add(origin)
 
         for path, description in SENSITIVE_PATHS:
             try:
-                probe_url = f"{base_url}/{path}"
+                probe_url = f"{origin}/{path}"
+                fingerprint = (origin, path)
+                if fingerprint in self._reported_paths:
+                    continue
                 # We don't follow redirects to avoid false positives on login pages
                 resp = await self.client.get(probe_url, timeout=5, follow_redirects=False)
 
                 # Only flag HTTP 200 with actual content
                 if resp.status_code == 200 and len(resp.text) > 0:
                     if self._looks_like_real_content(path, resp):
+                        self._reported_paths.add(fingerprint)
                         severity = self._get_severity(path)
                         vuln = self._create_vuln(
                             url=probe_url,
@@ -95,13 +109,23 @@ class SensitiveFiles(BaseCheck):
         lower = text.lower()
         if any(indicator in lower for indicator in [
             "page not found", "404 not found", "not found", "error 404",
+            "route not found", "cannot get /", "no such file",
+            "sign in", "log in", "login required", "authentication required",
         ]):
             return False
 
+        if "text/html" in content_type:
+            if "<!doctype html" in lower and ("<div id=\"root\"" in lower or "<div id=\"app\"" in lower):
+                return False
+            if path in {".env", ".git/HEAD", ".git/config"} and "<html" in lower:
+                return False
+
         # Layer 3: File-specific content validation
-        if path.endswith(".env") and "=" not in text:
+        if path.endswith(".env") and not re_search_env(text):
             return False
         if "git" in path and "ref:" not in text and "[core]" not in text:
+            return False
+        if path.endswith(".sql") and not any(token in lower for token in ["create table", "insert into", "dump", "database"]):
             return False
 
         return True
@@ -112,3 +136,12 @@ class SensitiveFiles(BaseCheck):
         if any(h in path for h in high_risk):
             return (8.0, SeverityLevel.HIGH, "🟠")
         return (5.0, SeverityLevel.MEDIUM, "🟡")
+
+
+def re_search_env(text: str) -> bool:
+    for line in text.splitlines()[:50]:
+        if "=" in line and not line.strip().startswith(("<", "{", "[")):
+            key = line.split("=", 1)[0].strip()
+            if key and key.replace("_", "").replace("-", "").isalnum():
+                return True
+    return False

@@ -2,16 +2,18 @@
 from typing import List, Union
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import field_validator
+from app.core.version import APP_VERSION
 
 class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     PROJECT_NAME: str = "SentinalScan"
+    VERSION: str = APP_VERSION
     HOST: str = "127.0.0.1"
     PORT: int = 8000
     
     # Security
-    API_KEY: str = "changeme_in_production"
-    SECRET_KEY: str = "changeme_in_production_secret"
+    API_KEY: str = ""
+    SECRET_KEY: str = ""
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8 
     
     # CORS — restrict to known dev origins by default
@@ -37,7 +39,7 @@ class Settings(BaseSettings):
     DEFAULT_MAX_PAGES: int = 50
     DEFAULT_WORKERS: int = 5
     DEFAULT_TIMEOUT: int = 15
-    USER_AGENT: str = "SentinalScan/2.0.0"
+    USER_AGENT: str = f"SentinalScan/{APP_VERSION}"
     
     model_config = SettingsConfigDict(
         env_file=".env",

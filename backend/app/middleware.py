@@ -11,6 +11,7 @@ import html
 import re
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
+from starlette.responses import Response
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -60,21 +61,23 @@ class SensitiveDataSanitizer(BaseHTTPMiddleware):
                 sanitized_text = self.sanitize(text)
                 sanitized_body = sanitized_text.encode("utf-8")
                 
-                from starlette.responses import Response
+                headers = dict(response.headers)
+                headers.pop("content-length", None)
                 return Response(
                     content=sanitized_body,
                     status_code=response.status_code,
-                    headers=dict(response.headers),
-                    media_type=response.media_type
+                    headers=headers,
+                    media_type=response.media_type or content_type.split(";")[0],
                 )
             except Exception:
                 # If decoding fails, return original response
-                from starlette.responses import Response
+                headers = dict(response.headers)
+                headers.pop("content-length", None)
                 return Response(
                     content=body,
                     status_code=response.status_code,
-                    headers=dict(response.headers),
-                    media_type=response.media_type
+                    headers=headers,
+                    media_type=response.media_type or content_type.split(";")[0],
                 )
                 
         return response

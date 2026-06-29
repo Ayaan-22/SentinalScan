@@ -2,6 +2,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
+from app.core.version import APP_VERSION
+from app.core.security import is_valid_api_key, validate_configured_api_key
 from app.core.logging import setup_logging
 from app.api.v1.router import api_router
 from app.services.scanner.manager import scan_manager
@@ -21,21 +23,11 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """Application lifespan — startup validation + shutdown cleanup."""
     # ── Startup ──────────────────────────────────────────────────────────────
-    # Enforce minimum API key entropy so operators cannot accidentally ship
-    # with a weak default key. 32 chars ≈ 192 bits of entropy for random keys.
-    _api_key = settings.API_KEY
-    if not _api_key or len(_api_key) < 32 or _api_key in (
-        "changeme_in_production",
-        "dev_api_key_12345",
-    ):
-        raise RuntimeError(
-            "STARTUP ABORTED: API_KEY must be at least 32 characters and must not "
-            "be a known default. Set a strong random key in backend/.env  "
-            '(e.g. `python -c "import secrets; print(secrets.token_hex(32))"`)' 
-        )
+    validate_configured_api_key()
     logger.info(
-        f"SentinalScan API starting up — key entropy OK ({len(_api_key)} chars)"
+        f"SentinalScan API starting up - key entropy OK ({len(settings.API_KEY)} chars)"
     )
+    logger.warning("Authorized testing only. Scan only systems you own or have explicit permission to test.")
     yield
     # ── Shutdown ──────────────────────────────────────────────────────────────
     logger.info("SentinalScan API shutting down...")
@@ -43,7 +35,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
-    version="2.1.0",
+    version=APP_VERSION,
     docs_url="/docs",
     redoc_url=None,
     lifespan=lifespan,
@@ -70,7 +62,7 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok", "version": "2.1.0", "project": settings.PROJECT_NAME}
+    return {"status": "ok", "version": APP_VERSION, "project": settings.PROJECT_NAME}
 
 
 # ─── WebSocket endpoint for real-time scan logs ───────────────────────────
@@ -81,7 +73,20 @@ async def websocket_logs(websocket: WebSocket, scan_id: str):
     Log messages are sanitized before transmission to prevent XSS payloads
     (e.g. '<script>alert(1)</script>') from reaching the client raw.
     """
+    api_key = websocket.query_params.get("api_key") or websocket.query_params.get("token")
+    if not is_valid_api_key(api_key):
+        await websocket.close(code=1008)
+        return
+
     await websocket.accept()
+    if not scan_manager.get_scan(scan_id):
+        await websocket.send_json({
+            "type": "error",
+            "status": "not_found",
+            "message": "Scan not found",
+        })
+        await websocket.close(code=1008)
+        return
     
     last_index = 0
     try:

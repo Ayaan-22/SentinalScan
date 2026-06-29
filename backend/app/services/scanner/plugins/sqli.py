@@ -34,13 +34,13 @@ class SQLInjection(BaseCheck):
     async def check(self, url: str, content: str, forms: List[BeautifulSoup]) -> List[Vulnerability]:
         vulns = []
         
-        # Error-based payloads
+        # Safe error/boolean payloads. These are read-only probes and must never
+        # modify server-side data.
         error_payloads = [
             ("'", "Single quote injection"),
             ('"', "Double quote injection"),
             ("' OR '1'='1", "Boolean-based OR injection"),
             ("' OR '1'='1' --", "OR injection with comment"),
-            ("1; DROP TABLE test --", "Stacked query attempt"),
             ("' UNION SELECT NULL--", "UNION-based injection"),
         ]
         

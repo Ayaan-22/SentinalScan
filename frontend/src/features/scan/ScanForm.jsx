@@ -6,9 +6,12 @@ import {
   Globe,
   ChevronDown,
   ChevronUp,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { useStartScan } from "./scan.hooks";
 import clsx from "clsx";
+import { getFriendlyApiError } from "../../services/api";
 
 export function ScanForm({ onScanStarted, onStop, isScanning }) {
   const startScan = useStartScan();
@@ -37,12 +40,16 @@ export function ScanForm({ onScanStarted, onStop, isScanning }) {
   const [options, setOptions] = useState({
     verify_ssl: true,
     obey_robots: true,
+    allow_private_targets: false,
     max_pages: 50,
     workers: 5,
     timeout: 15,
   });
 
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showToken, setShowToken] = useState(false);
+  const [authorized, setAuthorized] = useState(false);
+  const [error, setError] = useState("");
   const [advanced, setAdvanced] = useState({
     formatted_headers: "",
     formatted_cookies: "",
@@ -52,7 +59,8 @@ export function ScanForm({ onScanStarted, onStop, isScanning }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!url || !isValidUrl) return;
+    setError("");
+    if (!url || !isValidUrl || !authorized) return;
 
     startScan.mutate(
       {
@@ -68,7 +76,7 @@ export function ScanForm({ onScanStarted, onStop, isScanning }) {
           if (onScanStarted) onScanStarted(data);
         },
         onError: (err) => {
-          console.error("Scan start failed", err);
+          setError(getFriendlyApiError(err));
         },
       }
     );
@@ -111,18 +119,23 @@ export function ScanForm({ onScanStarted, onStop, isScanning }) {
             </p>
           )}
         </div>
+        <p className="mt-2 text-xs text-slate-500">
+          Only scan systems you own or have explicit permission to test.
+        </p>
       </div>
 
       {/* Toggle Grid */}
       <div className="grid grid-cols-2 gap-3">
-        <div
+        <button
+          type="button"
           onClick={() => updateOption("verify_ssl", !options.verify_ssl)}
           className={clsx(
-            "flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all hover:bg-slate-900/80",
+            "flex items-center justify-between p-3 rounded-xl border transition-all hover:bg-slate-900/80",
             options.verify_ssl
               ? "bg-cyan-500/10 border-cyan-500/50"
               : "bg-slate-950/50 border-slate-800"
           )}
+          aria-pressed={options.verify_ssl}
         >
           <span className="text-sm font-medium text-slate-300">Verify SSL</span>
           <div
@@ -135,16 +148,18 @@ export function ScanForm({ onScanStarted, onStop, isScanning }) {
           >
             {options.verify_ssl && <div className="w-2 h-2 bg-white rounded-sm" />}
           </div>
-        </div>
+        </button>
 
-        <div
+        <button
+          type="button"
           onClick={() => updateOption("obey_robots", !options.obey_robots)}
           className={clsx(
-            "flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all hover:bg-slate-900/80",
+            "flex items-center justify-between p-3 rounded-xl border transition-all hover:bg-slate-900/80",
             options.obey_robots
               ? "bg-blue-500/10 border-blue-500/50"
               : "bg-slate-950/50 border-slate-800"
           )}
+          aria-pressed={options.obey_robots}
         >
           <span className="text-sm font-medium text-slate-300">Obey Robots</span>
           <div
@@ -157,7 +172,7 @@ export function ScanForm({ onScanStarted, onStop, isScanning }) {
           >
             {options.obey_robots && <div className="w-2 h-2 bg-white rounded-sm" />}
           </div>
-        </div>
+        </button>
       </div>
 
       {/* Numeric Inputs */}
@@ -225,27 +240,71 @@ export function ScanForm({ onScanStarted, onStop, isScanning }) {
         {showAdvanced && (
           <div className="mt-4 space-y-3 p-4 bg-slate-900/50 rounded-xl border border-slate-800">
             <div>
+              <button
+                type="button"
+                onClick={() => updateOption("allow_private_targets", !options.allow_private_targets)}
+                disabled={isScanning}
+                aria-pressed={options.allow_private_targets}
+                className={clsx(
+                  "mb-3 flex w-full items-start justify-between gap-3 rounded-xl border p-3 text-left transition-all",
+                  options.allow_private_targets
+                    ? "border-orange-500/50 bg-orange-500/10"
+                    : "border-slate-800 bg-slate-950/60 hover:bg-slate-900/70"
+                )}
+              >
+                <span>
+                  <span className="block text-sm font-semibold text-slate-200">
+                    Allow private/internal target
+                  </span>
+                  <span className="mt-1 block text-xs leading-5 text-slate-500">
+                    Use only for systems you are explicitly authorized to test. Loopback, link-local, and metadata IPs remain blocked.
+                  </span>
+                </span>
+                <span
+                  className={clsx(
+                    "mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded border",
+                    options.allow_private_targets
+                      ? "border-orange-400 bg-orange-500"
+                      : "border-slate-600 bg-transparent"
+                  )}
+                >
+                  {options.allow_private_targets && <span className="h-2 w-2 rounded-sm bg-white" />}
+                </span>
+              </button>
+            </div>
+
+            <div>
               <label className="block text-xs text-slate-500 mb-1">
                 Auth Token
               </label>
+              <div className="relative">
               <input
-                type="text"
+                type={showToken ? "text" : "password"}
                 placeholder="Bearer token (optional)"
                 value={advanced.auth_token}
                 onChange={(e) =>
                   setAdvanced({ ...advanced, auth_token: e.target.value })
                 }
                 disabled={isScanning}
-                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 font-mono outline-none focus:border-cyan-500/50"
+                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 pr-10 text-sm text-slate-200 font-mono outline-none focus:border-cyan-500/50"
               />
+              <button
+                type="button"
+                onClick={() => setShowToken((value) => !value)}
+                className="absolute right-2 top-2 text-slate-500 hover:text-cyan-300"
+                aria-label={showToken ? "Hide auth token" : "Show auth token"}
+              >
+                {showToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+              </div>
             </div>
             <div>
               <label className="block text-xs text-slate-500 mb-1">
                 Custom Headers
               </label>
-              <input
-                type="text"
-                placeholder="Header:Value; Header2:Value2"
+              <textarea
+                rows={3}
+                placeholder={"Header: Value\nHeader2: Value2"}
                 value={advanced.formatted_headers}
                 onChange={(e) =>
                   setAdvanced({ ...advanced, formatted_headers: e.target.value })
@@ -258,9 +317,9 @@ export function ScanForm({ onScanStarted, onStop, isScanning }) {
               <label className="block text-xs text-slate-500 mb-1">
                 Cookies
               </label>
-              <input
-                type="text"
-                placeholder="name=value; name2=value2"
+              <textarea
+                rows={3}
+                placeholder={"name=value; name2=value2"}
                 value={advanced.formatted_cookies}
                 onChange={(e) =>
                   setAdvanced({ ...advanced, formatted_cookies: e.target.value })
@@ -273,9 +332,9 @@ export function ScanForm({ onScanStarted, onStop, isScanning }) {
               <label className="block text-xs text-slate-500 mb-1">
                 Exclude Paths
               </label>
-              <input
-                type="text"
-                placeholder="/admin, /logout, /api"
+              <textarea
+                rows={2}
+                placeholder={"/admin\n/logout\n/api"}
                 value={advanced.exclude_paths}
                 onChange={(e) =>
                   setAdvanced({ ...advanced, exclude_paths: e.target.value })
@@ -288,12 +347,31 @@ export function ScanForm({ onScanStarted, onStop, isScanning }) {
         )}
       </div>
 
+      <label className="flex items-start gap-3 rounded-xl border border-slate-800 bg-slate-950/40 p-3 text-sm text-slate-300">
+        <input
+          type="checkbox"
+          checked={authorized}
+          onChange={(e) => setAuthorized(e.target.checked)}
+          disabled={isScanning}
+          className="mt-1 h-4 w-4 rounded border-slate-600 bg-slate-900 text-cyan-500 focus:ring-cyan-500"
+        />
+        <span>
+          I confirm I am authorized to scan this target and will keep concurrency/rate limits appropriate.
+        </span>
+      </label>
+
+      {error && (
+        <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+          {error}
+        </div>
+      )}
+
       {/* Submit / Stop Button */}
       <div className="pt-2">
         {!isScanning ? (
           <button
             type="submit"
-            disabled={startScan.isPending || !url}
+            disabled={startScan.isPending || !url || !isValidUrl || !authorized}
             className="w-full relative group overflow-hidden rounded-xl p-[1px] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-xl" />

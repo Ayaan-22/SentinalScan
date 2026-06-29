@@ -1,6 +1,6 @@
 import httpx
 import asyncio
-from urllib.parse import urljoin, urlparse
+from urllib.parse import parse_qsl, urlencode, urljoin, urlparse, urlunparse
 from typing import Set, List, Optional, Dict
 import logging
 from bs4 import BeautifulSoup
@@ -12,20 +12,26 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-# SSRF Protection — hard block on private/internal CIDRs
-BLOCKED_CIDRS = [
+# SSRF Protection. RFC1918/private networks are allowed only with explicit
+# operator opt-in; loopback, link-local, metadata, CGNAT, and reserved networks
+# are always blocked.
+PRIVATE_CIDRS = [
     "10.0.0.0/8",        # RFC-1918 private
     "172.16.0.0/12",     # RFC-1918 private
     "192.168.0.0/16",    # RFC-1918 private
+    "fc00::/7",          # IPv6 private
+]
+ALWAYS_BLOCKED_CIDRS = [
     "127.0.0.0/8",       # loopback
     "169.254.0.0/16",    # link-local / AWS/GCP/Azure metadata
     "100.64.0.0/10",     # shared address space (CGNAT)
     "0.0.0.0/8",         # "this" network
+    "240.0.0.0/4",       # reserved
     "::1/128",           # IPv6 loopback
-    "fc00::/7",          # IPv6 private
     "fe80::/10",         # IPv6 link-local
 ]
-_BLOCKED_NETS = [ipaddress.ip_network(c) for c in BLOCKED_CIDRS]
+_PRIVATE_NETS = [ipaddress.ip_network(c) for c in PRIVATE_CIDRS]
+_ALWAYS_BLOCKED_NETS = [ipaddress.ip_network(c) for c in ALWAYS_BLOCKED_CIDRS]
 
 
 class WebCrawler:
@@ -34,12 +40,15 @@ class WebCrawler:
     def __init__(self, config: ScanRequest):
         self.config = config
         self.base_url = self._normalize_url(config.target_url)
-        self.base_domain = urlparse(config.target_url).netloc
+        self.base_domain = urlparse(self.base_url).netloc
+        self.base_origin = f"{urlparse(self.base_url).scheme}://{self.base_domain}"
         self.visited: Set[str] = set()
         self.robots_parser: Optional[robotparser.RobotFileParser] = None
         self.response_cache: Dict[str, str] = {}
         self.client: Optional[httpx.AsyncClient] = None
         self._semaphore = asyncio.Semaphore(config.workers)
+        self._stopped = False
+        self.max_response_bytes = 2_000_000
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self.client is None:
@@ -58,7 +67,7 @@ class WebCrawler:
                 cookies=cookies,
                 verify=self.config.verify_ssl,
                 timeout=self.config.timeout,
-                follow_redirects=True,
+                follow_redirects=False,
             )
 
             if self.config.auth_token:
@@ -66,8 +75,23 @@ class WebCrawler:
 
         return self.client
 
+    def stop(self) -> None:
+        self._stopped = True
+
     def _normalize_url(self, url: str) -> str:
-        return url.rstrip('/')
+        parsed = urlparse(url.strip())
+        scheme = parsed.scheme.lower()
+        hostname = (parsed.hostname or "").lower()
+        netloc = hostname
+        if parsed.port and not (
+            (scheme == "http" and parsed.port == 80)
+            or (scheme == "https" and parsed.port == 443)
+        ):
+            netloc = f"{hostname}:{parsed.port}"
+        path = parsed.path or "/"
+        path = path.rstrip("/") or "/"
+        query = urlencode(sorted(parse_qsl(parsed.query, keep_blank_values=True)))
+        return urlunparse((scheme, netloc, path, "", query, ""))
 
     async def _is_safe_ip(self, hostname: str) -> bool:
         """Prevent SSRF by blocking private/loopback/metadata IPs.
@@ -83,8 +107,18 @@ class WebCrawler:
                 ip_str = sockaddr[0]
                 ip = ipaddress.ip_address(ip_str)
 
-                for net in _BLOCKED_NETS:
+                for net in _ALWAYS_BLOCKED_NETS:
                     if ip in net:
+                        logger.warning(f"SSRF blocked: {hostname} resolves to {ip_str} in {net}")
+                        return False
+                for net in _PRIVATE_NETS:
+                    if ip in net:
+                        if self.config.allow_private_targets:
+                            logger.warning(
+                                "Private target allowed by explicit operator opt-in: "
+                                f"{hostname} resolves to {ip_str} in {net}"
+                            )
+                            continue
                         logger.warning(f"SSRF blocked: {hostname} resolves to {ip_str} in {net}")
                         return False
             return True
@@ -97,14 +131,14 @@ class WebCrawler:
 
     async def _is_valid_link(self, url: str, href: str) -> bool:
         try:
-            full_url = urljoin(url, href)
+            full_url = self._normalize_url(urljoin(url, href))
             parsed = urlparse(full_url)
 
             if parsed.scheme not in ('http', 'https'):
                 return False
 
             # Scope check — stay on the same domain
-            if parsed.netloc != self.base_domain:
+            if parsed.netloc.lower() != self.base_domain:
                 return False
 
             # SSRF check on the resolved IP
@@ -144,8 +178,46 @@ class WebCrawler:
         if not await self._is_safe_ip(hostname):
             raise ValueError(
                 f"Target '{hostname}' resolves to a blocked IP range. "
-                "Scanning internal/private addresses is not permitted."
+                "Scanning internal/private addresses requires explicit authorization "
+                "and allow_private_targets=true."
             )
+
+    async def _validate_request_url(self, url: str) -> str:
+        normalized = self._normalize_url(url)
+        parsed = urlparse(normalized)
+        if parsed.scheme not in ("http", "https"):
+            raise ValueError("Unsupported URL scheme")
+        if parsed.netloc.lower() != self.base_domain:
+            raise ValueError("Blocked cross-origin request")
+        if not parsed.hostname or not await self._is_safe_ip(parsed.hostname):
+            raise ValueError(f"Blocked unsafe request host: {parsed.hostname}")
+        if self.config.exclude_paths:
+            for excluded in self.config.exclude_paths:
+                if parsed.path.startswith(excluded):
+                    raise ValueError(f"Blocked excluded path: {parsed.path}")
+        return normalized
+
+    async def safe_get(self, url: str, **kwargs) -> httpx.Response:
+        """GET with per-request SSRF and manual redirect validation."""
+        client = await self._get_client()
+        current_url = await self._validate_request_url(url)
+        for _ in range(5):
+            if self._stopped:
+                raise asyncio.CancelledError("Crawler stopped")
+            resp = await client.get(current_url, follow_redirects=False, **kwargs)
+            if resp.status_code not in (301, 302, 303, 307, 308):
+                return resp
+
+            location = resp.headers.get("location")
+            if not location:
+                return resp
+            next_url = self._normalize_url(urljoin(current_url, location))
+            next_parsed = urlparse(next_url)
+            if next_parsed.netloc.lower() != self.base_domain:
+                raise ValueError(f"Blocked redirect outside scan origin: {next_url}")
+            current_url = await self._validate_request_url(next_url)
+
+        raise ValueError("Too many redirects")
 
     async def _load_robots_txt(self) -> None:
         """Fetch and parse robots.txt for the target domain."""
@@ -154,8 +226,7 @@ class WebCrawler:
 
         robots_url = f"{self.base_url}/robots.txt"
         try:
-            client = await self._get_client()
-            resp = await client.get(robots_url, timeout=5)
+            resp = await self.safe_get(robots_url, timeout=5)
             if resp.status_code == 200:
                 parser = robotparser.RobotFileParser()
                 parser.set_url(robots_url)
@@ -184,6 +255,8 @@ class WebCrawler:
             while True:
                 url = await queue.get()
                 try:
+                    if self._stopped:
+                        return
                     if len(pages) >= self.config.max_pages:
                         return
 
@@ -206,7 +279,7 @@ class WebCrawler:
         
         # Wait for queue to be empty or max_pages reached
         try:
-            while not queue.empty() and len(pages) < self.config.max_pages:
+            while not self._stopped and not queue.empty() and len(pages) < self.config.max_pages:
                 await asyncio.sleep(0.1)
             
             # Wait for remaining tasks with timeout
@@ -224,11 +297,14 @@ class WebCrawler:
 
     async def _fetch_page(self, url: str) -> Optional[Set[str]]:
         try:
-            client = await self._get_client()
-            resp = await client.get(url)
+            resp = await self.safe_get(url)
             
             content_type = resp.headers.get('Content-Type', '').lower()
             if 'html' not in content_type:
+                return None
+
+            if len(resp.content) > self.max_response_bytes:
+                logger.warning(f"Skipping oversized response from {url}")
                 return None
 
             # Cache the response for later vulnerability testing
@@ -242,12 +318,12 @@ class WebCrawler:
             for a in soup.find_all('a', href=True):
                 href = a['href']
                 if await self._is_valid_link(url, href):
-                    links.add(urljoin(url, href).split('#')[0])
+                    links.add(self._normalize_url(urljoin(url, href)))
 
             for form in soup.find_all('form', action=True):
                 action = form.get('action', '')
                 if action and await self._is_valid_link(url, action):
-                    links.add(urljoin(url, action).split('#')[0])
+                    links.add(self._normalize_url(urljoin(url, action)))
 
             return links
         except httpx.HTTPStatusError as e:

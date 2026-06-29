@@ -1,7 +1,7 @@
 import logging
 import asyncio
 import time
-from typing import List, Set, Tuple
+from typing import Awaitable, Callable, List, Set, Tuple
 from bs4 import BeautifulSoup
 from app.models.scan import ScanRequest
 from app.models.vulnerability import Vulnerability
@@ -18,13 +18,18 @@ logger = logging.getLogger(__name__)
 class ScannerEngine:
     """Core scanning engine — Async crawl + parallel test pipeline"""
     
-    def __init__(self, config: ScanRequest):
+    def __init__(
+        self,
+        config: ScanRequest,
+        on_finding: Callable[[Vulnerability], Awaitable[None]] | None = None,
+    ):
         self.config = config
         self.crawler = WebCrawler(config)
         self.vulnerabilities: List[Vulnerability] = []
         self._stop_event = False
         self._pages_scanned = 0
         self.plugins: List[BaseCheck] = []
+        self.on_finding = on_finding
 
     async def _init_plugins(self):
         """Initialize plugins with the crawler's async client."""
@@ -71,11 +76,30 @@ class ScannerEngine:
             logger.info(f"Deduplication removed {removed} duplicate findings")
         self.vulnerabilities = unique
 
+    async def _add_finding(self, finding: Vulnerability) -> None:
+        fingerprint = (
+            finding.url,
+            finding.vuln_type.value if hasattr(finding.vuln_type, "value") else str(finding.vuln_type),
+            finding.description,
+        )
+        for existing in self.vulnerabilities:
+            existing_fingerprint = (
+                existing.url,
+                existing.vuln_type.value if hasattr(existing.vuln_type, "value") else str(existing.vuln_type),
+                existing.description,
+            )
+            if existing_fingerprint == fingerprint:
+                return
+        self.vulnerabilities.append(finding)
+        if self.on_finding:
+            await self.on_finding(finding)
+
     async def run(self) -> List[Vulnerability]:
         """Execute the full async scan pipeline."""
         start_time = time.time()
         logger.info('=' * 60)
         logger.info("VULNERABILITY SCAN STARTED (ASYNC ENGINE)")
+        logger.info("Authorized testing only - scanning must be limited to approved targets")
         logger.info(f"Target: {self.config.target_url}")
         logger.info(f"Max Pages: {self.config.max_pages} | Workers: {self.config.workers}")
         logger.info('=' * 60)
@@ -107,8 +131,7 @@ class ScannerEngine:
                     try:
                         content = self.crawler.response_cache.get(page)
                         if not content:
-                            client = await self.crawler._get_client()
-                            resp = await client.get(page, timeout=self.config.timeout)
+                            resp = await self.crawler.safe_get(page, timeout=self.config.timeout)
                             content = resp.text
                         
                         forms = self._extract_forms(content)
@@ -122,8 +145,12 @@ class ScannerEngine:
                                 logger.error(f"  Plugin {self.plugins[i].vuln_type.value} failed on {page}: {result}")
                             elif result:
                                 logger.info(f"  ⚠ {self.plugins[i].vuln_type.value}: {len(result)} finding(s)")
-                                self.vulnerabilities.extend(result)
+                                for finding in result:
+                                    await self._add_finding(finding)
                                 
+                    except asyncio.CancelledError:
+                        logger.info("Scan stopped by user")
+                        raise
                     except Exception as e:
                         logger.error(f"  Failed to scan {page}: {e}")
                     finally:
@@ -131,6 +158,9 @@ class ScannerEngine:
 
             # Run page scans concurrently
             await asyncio.gather(*[scan_page(p, i) for i, p in enumerate(pages)])
+            if self._stop_event:
+                logger.info("Scan stopped by user")
+                return self.vulnerabilities
             
             # Phase 3: Deduplicate
             self._deduplicate_vulnerabilities()

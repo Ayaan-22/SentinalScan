@@ -1,7 +1,7 @@
 import React from "react";
 import { useScanResults, useScanStatus } from "../scan/scan.hooks";
 import { FindingsTable } from "./FindingsTable";
-import { Loader2, Shield, Download, BarChart3 } from "lucide-react";
+import { Loader2, Shield, Download, BarChart3, FileDown } from "lucide-react";
 import {
   PieChart,
   Pie,
@@ -83,11 +83,34 @@ function SeverityChart({ stats }) {
 }
 
 export function FindingsDashboard({ scanId }) {
+  const [severityFilter, setSeverityFilter] = React.useState("all");
+  const [search, setSearch] = React.useState("");
+  const [sortBy, setSortBy] = React.useState("severity");
   const { data: status } = useScanStatus(scanId);
   const isScanning =
     status?.status === "running" || status?.status === "pending";
 
   const { data: results, isLoading } = useScanResults(scanId, isScanning);
+
+  const filteredResults = React.useMemo(() => {
+    const needle = search.trim().toLowerCase();
+    const severityRank = { Critical: 0, High: 1, Medium: 2, Low: 3, Info: 4 };
+    return [...(results || [])]
+      .filter((finding) => {
+        const severity = finding.severity_level || "Info";
+        if (severityFilter !== "all" && severity.toLowerCase() !== severityFilter) return false;
+        if (!needle) return true;
+        return `${finding.url} ${finding.description} ${finding.evidence} ${finding.vuln_type}`
+          .toLowerCase()
+          .includes(needle);
+      })
+      .sort((a, b) => {
+        if (sortBy === "score") return (b.severity_score || 0) - (a.severity_score || 0);
+        if (sortBy === "time") return (b.timestamp || 0) - (a.timestamp || 0);
+        if (sortBy === "url") return (a.url || "").localeCompare(b.url || "");
+        return (severityRank[a.severity_level] ?? 5) - (severityRank[b.severity_level] ?? 5);
+      });
+  }, [results, search, severityFilter, sortBy]);
 
   // Calculate statistics
   const stats = React.useMemo(() => {
@@ -111,6 +134,33 @@ export function FindingsDashboard({ scanId }) {
     const a = document.createElement("a");
     a.href = url;
     a.download = `sentinalscan-report-${scanId?.slice(0, 8) || "scan"}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportCsv = () => {
+    if (!results || results.length === 0) return;
+    const escape = (value) => `"${String(value ?? "").replaceAll('"', '""')}"`;
+    const rows = [
+      ["severity", "score", "type", "url", "confidence", "description", "evidence", "remediation"],
+      ...results.map((finding) => [
+        finding.severity_level,
+        finding.severity_score,
+        finding.vuln_type,
+        finding.url,
+        finding.confidence,
+        finding.description,
+        finding.evidence,
+        finding.remediation,
+      ]),
+    ];
+    const blob = new Blob([rows.map((row) => row.map(escape).join(",")).join("\n")], {
+      type: "text/csv",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `sentinalscan-report-${scanId?.slice(0, 8) || "scan"}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -202,11 +252,43 @@ export function FindingsDashboard({ scanId }) {
 
       {/* Actions Bar */}
       {results && results.length > 0 && (
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3">
+          <div className="grid gap-2 md:grid-cols-[1fr_160px_160px]">
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search URL, description, evidence"
+              className="rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-slate-200 outline-none focus:border-cyan-500/60"
+            />
+            <select
+              value={severityFilter}
+              onChange={(e) => setSeverityFilter(e.target.value)}
+              className="rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-slate-200 outline-none focus:border-cyan-500/60"
+            >
+              <option value="all">All severities</option>
+              <option value="critical">Critical</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+              <option value="info">Info</option>
+            </select>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-slate-200 outline-none focus:border-cyan-500/60"
+            >
+              <option value="severity">Sort by severity</option>
+              <option value="score">Sort by score</option>
+              <option value="time">Sort by time</option>
+              <option value="url">Sort by URL</option>
+            </select>
+          </div>
+          <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-xs text-slate-500">
             <BarChart3 className="w-4 h-4" />
-            <span>{results.length} vulnerabilities across {new Set(results.map((r) => r.url)).size} pages</span>
+            <span>{filteredResults.length} shown, {results.length} total across {new Set(results.map((r) => r.url)).size} affected URLs</span>
           </div>
+          <div className="flex gap-2">
           <button
             onClick={handleExport}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-400 hover:text-cyan-400 bg-slate-900/50 hover:bg-slate-900 border border-slate-800 rounded-lg transition-all"
@@ -214,10 +296,19 @@ export function FindingsDashboard({ scanId }) {
             <Download className="w-3.5 h-3.5" />
             Export JSON
           </button>
+          <button
+            onClick={handleExportCsv}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-400 hover:text-cyan-400 bg-slate-900/50 hover:bg-slate-900 border border-slate-800 rounded-lg transition-all"
+          >
+            <FileDown className="w-3.5 h-3.5" />
+            Export CSV
+          </button>
+          </div>
+          </div>
         </div>
       )}
 
-      <FindingsTable findings={results || []} />
+      <FindingsTable findings={filteredResults} />
     </div>
   );
 }

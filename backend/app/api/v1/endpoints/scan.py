@@ -33,6 +33,7 @@ async def get_scan_status(scan_id: str):
     scan = scan_manager.get_scan(scan_id)
     if not scan:
         raise HTTPException(status_code=404, detail="Scan not found")
+    scan.recent_logs = scan_manager.get_logs(scan_id)[-300:]
     return scan
 
 @router.get("/{scan_id}/logs", response_model=List[Dict], dependencies=[Depends(get_api_key)])
@@ -51,5 +52,5 @@ async def stop_scan(scan_id: str):
     if not scan:
         raise HTTPException(status_code=404, detail="Scan not found")
     
-    scan_manager.stop_scan(scan_id)
+    await scan_manager.stop_scan(scan_id)
     return scan
