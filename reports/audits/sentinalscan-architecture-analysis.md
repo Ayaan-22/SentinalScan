@@ -188,7 +188,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
-      - run: pip install -r backend/requirements.txt pytest pytest-asyncio respx ruff bandit
+      - run: pip install -r requirements-dev.txt ruff bandit
       - run: ruff check backend/
       - run: bandit -r backend/ -ll -x backend/tests/
       - run: pytest backend/tests/ --cov=backend --cov-fail-under=60

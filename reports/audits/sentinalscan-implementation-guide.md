@@ -1207,8 +1207,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -r backend/requirements.txt
-          pip install pytest pytest-asyncio pytest-cov respx ruff bandit pip-audit
+          pip install -r requirements-dev.txt
+          pip install pytest-cov ruff bandit pip-audit
 
       - name: Lint (ruff)
         run: ruff check backend/

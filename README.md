@@ -119,6 +119,8 @@ For authorized internal testing where DNS resolves to RFC1918 addresses such as 
 ## Testing
 
 ```bash
+python -m pip install -r requirements-dev.txt
+
 cd backend
 python -m compileall -q app
 python -m pytest -q
@@ -127,6 +129,8 @@ cd ../frontend
 npm run lint
 npm run build
 ```
+
+`requirements-dev.txt` installs the backend runtime dependencies plus the minimal test-only packages: `pytest` and `pytest-asyncio`. The backend suite uses FastAPI's `TestClient` and `httpx.MockTransport` from the runtime `httpx` dependency, so no extra HTTP mocking package is required.
 
 ## Live Logs
 
