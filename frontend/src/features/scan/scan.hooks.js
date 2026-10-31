@@ -18,7 +18,9 @@ export function useScanStatus(scanId) {
     refetchInterval: (query) => {
       const scanStatus = query.state?.data?.status;
       // Poll every 1.5s if running or pending
-      return scanStatus === "running" || scanStatus === "pending" ? 1500 : false;
+      return scanStatus === "running" || scanStatus === "pending"
+        ? 1500
+        : false;
     },
   });
 }
@@ -52,15 +54,21 @@ export function useStartScan() {
       if (config.cookies_str) {
         const cookies = {};
         config.cookies_str.split(";").forEach((part) => {
-          const [k, v] = part.split("=");
+          const separator = part.indexOf("=");
+          if (separator < 0) return;
+          const k = part.slice(0, separator);
+          const v = part.slice(separator + 1);
           if (k?.trim() && v?.trim()) cookies[k.trim()] = v.trim();
         });
         if (Object.keys(cookies).length > 0) payload.cookies = cookies;
       }
       if (config.headers_str) {
         const headers = {};
-        config.headers_str.split(/\n|;/).forEach((part) => {
-          const [k, v] = part.split(":");
+        config.headers_str.split(/\r?\n/).forEach((part) => {
+          const separator = part.indexOf(":");
+          if (separator < 0) return;
+          const k = part.slice(0, separator);
+          const v = part.slice(separator + 1);
           if (k?.trim() && v?.trim()) headers[k.trim()] = v.trim();
         });
         if (Object.keys(headers).length > 0) payload.headers = headers;

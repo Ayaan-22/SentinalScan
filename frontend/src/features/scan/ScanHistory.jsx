@@ -1,93 +1,144 @@
-import React from "react";
-import { useAllScans } from "./scan.hooks";
-import { Clock, CheckCircle2, XCircle, AlertCircle, PlayCircle, Loader2 } from "lucide-react";
-import { clsx } from "clsx";
+import { useState } from "react";
+import { ArrowUpRight, Globe2, Plus, Radar } from "lucide-react";
+import { formatDate, hostname } from "../../app/utils";
+import { Select } from "../../components/Select";
 
-export function ScanHistory({ activeScanId, onSelectScan }) {
-  const { data: scans, isLoading } = useAllScans();
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-10 text-slate-500">
-        <Loader2 className="w-5 h-5 animate-spin mr-2" />
-        <span className="text-sm">Loading history...</span>
-      </div>
+export function ScanHistory({
+  scans = [],
+  loading,
+  error,
+  activeScanId,
+  onSelectScan,
+  search = "",
+  onNewScan,
+}) {
+  const [filter, setFilter] = useState("all");
+  const [sort, setSort] = useState("recent");
+  const filtered = scans
+    .filter(
+      (s) =>
+        (filter === "all" || s.status === filter) &&
+        `${s.target_url} ${s.scan_id} ${s.status}`
+          .toLowerCase()
+          .includes(search.toLowerCase()),
+    )
+    .sort((a, b) =>
+      sort === "findings"
+        ? b.vulnerabilities_count - a.vulnerabilities_count
+        : new Date(b.start_time) - new Date(a.start_time),
     );
-  }
-
-  if (!scans || scans.length === 0) {
-    return (
-      <div className="text-center py-10 px-4">
-        <Clock className="w-8 h-8 text-slate-700 mx-auto mb-3" />
-        <p className="text-sm text-slate-500">No scan history found</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-2">
-      <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 px-1">
-        Recent Scans
-      </h3>
-      <div className="space-y-1 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-800">
-        {scans.map((scan) => (
-          <button
-            key={scan.scan_id}
-            onClick={() => onSelectScan(scan.scan_id)}
-            className={clsx(
-              "w-full text-left p-3 rounded-xl border transition-all group relative overflow-hidden",
-              activeScanId === scan.scan_id
-                ? "bg-cyan-500/10 border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.1)]"
-                : "bg-slate-900/30 border-slate-800/50 hover:bg-slate-900/60 hover:border-slate-700"
-            )}
-          >
-            {/* Active Indicator Bar */}
-            {activeScanId === scan.scan_id && (
-              <div className="absolute left-0 top-0 bottom-0 w-1 bg-cyan-500" />
-            )}
-
-            <div className="flex items-start justify-between gap-2 mb-1">
-              <span className="text-[11px] font-mono text-slate-300 truncate flex-1">
-                {scan.target_url.replace(/^https?:\/\//, "")}
-              </span>
-              <StatusIcon status={scan.status} />
-            </div>
-
-            <div className="flex items-center justify-between text-[10px]">
-              <span className="text-slate-500">
-                {new Date(scan.start_time).toLocaleDateString(undefined, {
-                  month: "short",
-                  day: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </span>
-              {scan.vulnerabilities_count > 0 && (
-                <span className="text-orange-400 font-bold">
-                  {scan.vulnerabilities_count} findings
-                </span>
-              )}
-            </div>
-          </button>
-        ))}
+    <section className="panel history-panel">
+      <div className="panel-heading">
+        <div>
+          <h3>
+            Assessment archive{" "}
+            <span className="count-pill">{scans.length}</span>
+          </h3>
+          <p>Select a session to open its full assessment.</p>
+        </div>
+        <div className="table-controls">
+          <Select
+            label="Filter scan status"
+            value={filter}
+            onChange={setFilter}
+            options={[
+              { value: "all", label: "All statuses" },
+              ...["completed", "running", "pending", "failed", "stopped"].map(
+                (status) => ({
+                  value: status,
+                  label: status[0].toUpperCase() + status.slice(1),
+                }),
+              ),
+            ]}
+          />
+          <Select
+            label="Sort scan history"
+            value={sort}
+            onChange={setSort}
+            options={[
+              { value: "recent", label: "Most recent" },
+              { value: "findings", label: "Most findings" },
+            ]}
+          />
+        </div>
       </div>
-    </div>
+      {error && (
+        <div className="table-error" role="alert">
+          Could not load assessment history: {error}
+        </div>
+      )}
+      {loading ? (
+        <div className="empty-state">
+          <Radar className="scanning" size={30} />
+          <h3>Loading assessments…</h3>
+        </div>
+      ) : !filtered.length ? (
+        <div className="empty-state">
+          <div className="empty-symbol">
+            <Radar size={28} />
+          </div>
+          <h3>
+            {scans.length
+              ? "No matching assessments"
+              : "Your first assessment starts here"}
+          </h3>
+          <p>
+            {scans.length
+              ? "Try another search or status filter."
+              : "Configure a target to build a detailed history of your security assessments."}
+          </p>
+          <button className="button primary" onClick={onNewScan}>
+            <Plus size={15} /> New scan
+          </button>
+        </div>
+      ) : (
+        <div className="history-table">
+          <div className="history-row table-heading">
+            <span>TARGET / SESSION</span>
+            <span>STATUS</span>
+            <span>PAGES</span>
+            <span>FINDINGS</span>
+            <span>STARTED</span>
+            <span />
+          </div>
+          {filtered.map((s) => (
+            <button
+              key={s.scan_id}
+              onClick={() => onSelectScan(s.scan_id)}
+              className={`history-row ${activeScanId === s.scan_id ? "selected-scan" : ""}`}
+            >
+              <span className="history-target">
+                <span className="history-target-icon">
+                  <Globe2 size={18} />
+                </span>
+                <span>
+                  <strong>{hostname(s.target_url)}</strong>
+                  <small>{s.scan_id}</small>
+                </span>
+              </span>
+              <span className={`status-badge ${s.status}`}>
+                <span />
+                {s.status}
+              </span>
+              <span className="mono history-pages">{s.pages_scanned}</span>
+              <span
+                className={`mono ${s.vulnerabilities_count ? "warning-text" : ""}`}
+              >
+                {s.vulnerabilities_count}
+              </span>
+              <span className="history-date">{formatDate(s.start_time)}</span>
+              <ArrowUpRight size={16} />
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="table-footer">
+        <span>{filtered.length} assessments shown</span>
+        <span>
+          <Radar size={12} /> History reflects the current engine session
+        </span>
+      </div>
+    </section>
   );
-}
-
-function StatusIcon({ status }) {
-  switch (status) {
-    case "completed":
-      return <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />;
-    case "failed":
-      return <XCircle className="w-3.5 h-3.5 text-red-500" />;
-    case "running":
-      return <Loader2 className="w-3.5 h-3.5 text-cyan-500 animate-spin" />;
-    case "pending":
-      return <PlayCircle className="w-3.5 h-3.5 text-slate-400 animate-pulse" />;
-    case "stopped":
-      return <AlertCircle className="w-3.5 h-3.5 text-yellow-500" />;
-    default:
-      return null;
-  }
 }

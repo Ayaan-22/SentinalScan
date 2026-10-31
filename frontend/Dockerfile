@@ -9,7 +9,7 @@ ENV VITE_API_URL=$VITE_API_URL
 ENV VITE_WS_URL=$VITE_WS_URL
 
 COPY package*.json ./
-RUN npm install
+RUN npm ci
 
 COPY . .
 # We use a simple dev server for this lab environment, but build-stage is here for completeness

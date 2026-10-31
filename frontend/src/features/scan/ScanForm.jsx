@@ -1,394 +1,297 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import {
-  Play,
-  Square,
-  Settings,
-  Globe,
+  ArrowRight,
   ChevronDown,
-  ChevronUp,
   Eye,
   EyeOff,
+  Globe2,
+  LockKeyhole,
+  Settings2,
+  ShieldCheck,
+  Square,
 } from "lucide-react";
 import { useStartScan } from "./scan.hooks";
-import clsx from "clsx";
-import { getFriendlyApiError } from "../../services/api";
+import { getFriendlyApiError, hasApiKey } from "../../services/api";
 
-export function ScanForm({ onScanStarted, onStop, isScanning }) {
-  const startScan = useStartScan();
-
+export function ScanForm({ onScanStarted, onStop, isScanning, stopPending }) {
+  const start = useStartScan();
   const [url, setUrl] = useState("");
-  const [isValidUrl, setIsValidUrl] = useState(true);
-
-  const validateUrl = (value) => {
-    setUrl(value);
-    if (!value) {
-      setIsValidUrl(true);
-      return;
-    }
-    try {
-      // Basic check for http/https prefix as required by backend
-      if (!value.startsWith("http://") && !value.startsWith("https://")) {
-        setIsValidUrl(false);
-        return;
-      }
-      new URL(value);
-      setIsValidUrl(true);
-    } catch {
-      setIsValidUrl(false);
-    }
-  };
-  const [options, setOptions] = useState({
-    verify_ssl: true,
-    obey_robots: true,
-    allow_private_targets: false,
-    max_pages: 50,
-    workers: 5,
-    timeout: 15,
-  });
-
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [advanced, setAdvanced] = useState(false);
   const [showToken, setShowToken] = useState(false);
   const [authorized, setAuthorized] = useState(false);
   const [error, setError] = useState("");
-  const [advanced, setAdvanced] = useState({
-    formatted_headers: "",
-    formatted_cookies: "",
-    exclude_paths: "",
+  const [options, setOptions] = useState({
+    max_pages: 50,
+    workers: 5,
+    timeout: 15,
+    verify_ssl: true,
+    obey_robots: true,
+    allow_private_targets: false,
     auth_token: "",
+    headers_str: "",
+    cookies_str: "",
+    exclude_paths_str: "",
   });
-
-  const handleSubmit = (e) => {
+  const update = (key, value) =>
+    setOptions((prev) => ({ ...prev, [key]: value }));
+  const valid = (() => {
+    try {
+      const u = new URL(url.trim());
+      return (
+        ["http:", "https:"].includes(u.protocol) &&
+        !!u.hostname &&
+        !u.username &&
+        !u.password
+      );
+    } catch {
+      return false;
+    }
+  })();
+  const submit = (e) => {
     e.preventDefault();
     setError("");
-    if (!url || !isValidUrl || !authorized) return;
-
-    startScan.mutate(
+    if (!valid || !authorized) return;
+    if (!hasApiKey()) {
+      setError(
+        "Add your session API key in Connection settings before launching a scan.",
+      );
+      return;
+    }
+    start.mutate(
+      { target_url: url.trim(), ...options },
       {
-        target_url: url,
-        ...options,
-        auth_token: advanced.auth_token || undefined,
-        headers_str: advanced.formatted_headers || undefined,
-        cookies_str: advanced.formatted_cookies || undefined,
-        exclude_paths_str: advanced.exclude_paths || undefined,
+        onSuccess: onScanStarted,
+        onError: (e) => setError(getFriendlyApiError(e)),
       },
-      {
-        onSuccess: (data) => {
-          if (onScanStarted) onScanStarted(data);
-        },
-        onError: (err) => {
-          setError(getFriendlyApiError(err));
-        },
-      }
     );
   };
-
-  const updateOption = (key, value) => {
-    if (!isScanning) {
-      setOptions((prev) => ({ ...prev, [key]: value }));
-    }
-  };
-
+  const disabled = isScanning || start.isPending;
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
-      {/* Target URL */}
-      <div>
-        <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
+    <form onSubmit={submit} className="scan-form">
+      {isScanning && (
+        <div className="notice">
+          <span className="status-dot pulse" />
+          <span>
+            The selected assessment is still running. Stop it or wait for
+            completion before configuring another.
+          </span>
+        </div>
+      )}
+      <fieldset disabled={disabled}>
+        <div className="form-section-label">
+          <span>01</span> TARGET & SCOPE
+        </div>
+        <label className="field-label" htmlFor="target-url">
           Target URL
         </label>
-        <div className="relative group">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Globe className="h-5 w-5 text-slate-500 group-focus-within:text-cyan-400 transition-colors" />
-          </div>
+        <div className={`target-input ${url && !valid ? "invalid" : ""}`}>
+          <Globe2 size={20} />
           <input
-            type="text"
+            id="target-url"
+            type="url"
             required
-            placeholder="https://example.com"
+            autoComplete="url"
+            placeholder="https://your-application.com"
             value={url}
-            onChange={(e) => validateUrl(e.target.value)}
-            disabled={isScanning}
-            className={clsx(
-              "block w-full pl-10 pr-3 py-3 bg-slate-950/50 border rounded-xl text-slate-200 placeholder-slate-600 focus:ring-2 transition-all font-mono text-sm",
-              !isValidUrl && url 
-                ? "border-red-500/50 focus:ring-red-500/50 focus:border-red-500" 
-                : "border-slate-700 focus:ring-cyan-500/50 focus:border-cyan-500"
-            )}
+            onChange={(e) => setUrl(e.target.value)}
           />
-          {!isValidUrl && url && (
-            <p className="absolute -bottom-6 left-1 text-[10px] text-red-500 font-bold uppercase tracking-widest animate-pulse">
-              Invalid target URL format
-            </p>
-          )}
+          <span>HTTP / HTTPS</span>
         </div>
-        <p className="mt-2 text-xs text-slate-500">
-          Only scan systems you own or have explicit permission to test.
+        <p className={`field-help ${url && !valid ? "error-text" : ""}`}>
+          {url && !valid
+            ? "Enter a full HTTP or HTTPS URL without embedded credentials."
+            : "Discovery stays within this target's origin."}
         </p>
-      </div>
-
-      {/* Toggle Grid */}
-      <div className="grid grid-cols-2 gap-3">
-        <button
-          type="button"
-          onClick={() => updateOption("verify_ssl", !options.verify_ssl)}
-          className={clsx(
-            "flex items-center justify-between p-3 rounded-xl border transition-all hover:bg-slate-900/80",
-            options.verify_ssl
-              ? "bg-cyan-500/10 border-cyan-500/50"
-              : "bg-slate-950/50 border-slate-800"
-          )}
-          aria-pressed={options.verify_ssl}
-        >
-          <span className="text-sm font-medium text-slate-300">Verify SSL</span>
-          <div
-            className={clsx(
-              "w-5 h-5 rounded flex items-center justify-center border transition-all",
-              options.verify_ssl
-                ? "bg-cyan-500 border-cyan-500"
-                : "bg-transparent border-slate-600"
-            )}
-          >
-            {options.verify_ssl && <div className="w-2 h-2 bg-white rounded-sm" />}
-          </div>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => updateOption("obey_robots", !options.obey_robots)}
-          className={clsx(
-            "flex items-center justify-between p-3 rounded-xl border transition-all hover:bg-slate-900/80",
-            options.obey_robots
-              ? "bg-blue-500/10 border-blue-500/50"
-              : "bg-slate-950/50 border-slate-800"
-          )}
-          aria-pressed={options.obey_robots}
-        >
-          <span className="text-sm font-medium text-slate-300">Obey Robots</span>
-          <div
-            className={clsx(
-              "w-5 h-5 rounded flex items-center justify-center border transition-all",
-              options.obey_robots
-                ? "bg-blue-500 border-blue-500"
-                : "bg-transparent border-slate-600"
-            )}
-          >
-            {options.obey_robots && <div className="w-2 h-2 bg-white rounded-sm" />}
-          </div>
-        </button>
-      </div>
-
-      {/* Numeric Inputs */}
-      <div className="grid grid-cols-3 gap-3">
-        <div>
-          <label className="block text-xs text-slate-500 mb-1.5 font-medium">
-            Max Pages
-          </label>
-          <input
-            type="number"
-            min="1"
-            max="500"
-            value={options.max_pages}
-            onChange={(e) => updateOption("max_pages", parseInt(e.target.value) || 50)}
-            disabled={isScanning}
-            className="w-full bg-slate-950/50 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-slate-200 font-mono text-center outline-none focus:border-cyan-500/50"
-          />
+        <div className="form-section-label">
+          <span>02</span> SCAN PARAMETERS
         </div>
-        <div>
-          <label className="block text-xs text-slate-500 mb-1.5 font-medium">
-            Workers
-          </label>
-          <input
-            type="number"
-            min="1"
-            max="20"
-            value={options.workers}
-            onChange={(e) => updateOption("workers", parseInt(e.target.value) || 5)}
-            disabled={isScanning}
-            className="w-full bg-slate-950/50 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-slate-200 font-mono text-center outline-none focus:border-cyan-500/50"
-          />
-        </div>
-        <div>
-          <label className="block text-xs text-slate-500 mb-1.5 font-medium">
-            Timeout (s)
-          </label>
-          <input
-            type="number"
-            min="1"
-            max="60"
-            value={options.timeout}
-            onChange={(e) => updateOption("timeout", parseInt(e.target.value) || 15)}
-            disabled={isScanning}
-            className="w-full bg-slate-950/50 border border-slate-700 rounded-lg px-3 py-2.5 text-sm text-slate-200 font-mono text-center outline-none focus:border-cyan-500/50"
-          />
-        </div>
-      </div>
-
-      {/* Advanced Options Toggle */}
-      <div>
-        <button
-          type="button"
-          onClick={() => setShowAdvanced(!showAdvanced)}
-          className="flex items-center gap-2 text-xs font-semibold text-slate-400 uppercase tracking-wider hover:text-cyan-400 transition-colors"
-        >
-          <Settings className="w-4 h-4" />
-          Advanced Configuration
-          {showAdvanced ? (
-            <ChevronUp className="w-3 h-3" />
-          ) : (
-            <ChevronDown className="w-3 h-3" />
-          )}
-        </button>
-
-        {showAdvanced && (
-          <div className="mt-4 space-y-3 p-4 bg-slate-900/50 rounded-xl border border-slate-800">
-            <div>
-              <button
-                type="button"
-                onClick={() => updateOption("allow_private_targets", !options.allow_private_targets)}
-                disabled={isScanning}
-                aria-pressed={options.allow_private_targets}
-                className={clsx(
-                  "mb-3 flex w-full items-start justify-between gap-3 rounded-xl border p-3 text-left transition-all",
-                  options.allow_private_targets
-                    ? "border-orange-500/50 bg-orange-500/10"
-                    : "border-slate-800 bg-slate-950/60 hover:bg-slate-900/70"
-                )}
-              >
-                <span>
-                  <span className="block text-sm font-semibold text-slate-200">
-                    Allow private/internal target
-                  </span>
-                  <span className="mt-1 block text-xs leading-5 text-slate-500">
-                    Use only for systems you are explicitly authorized to test. Loopback, link-local, and metadata IPs remain blocked.
-                  </span>
-                </span>
-                <span
-                  className={clsx(
-                    "mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded border",
-                    options.allow_private_targets
-                      ? "border-orange-400 bg-orange-500"
-                      : "border-slate-600 bg-transparent"
-                  )}
-                >
-                  {options.allow_private_targets && <span className="h-2 w-2 rounded-sm bg-white" />}
-                </span>
-              </button>
-            </div>
-
-            <div>
-              <label className="block text-xs text-slate-500 mb-1">
-                Auth Token
-              </label>
-              <div className="relative">
-              <input
-                type={showToken ? "text" : "password"}
-                placeholder="Bearer token (optional)"
-                value={advanced.auth_token}
-                onChange={(e) =>
-                  setAdvanced({ ...advanced, auth_token: e.target.value })
-                }
-                disabled={isScanning}
-                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 pr-10 text-sm text-slate-200 font-mono outline-none focus:border-cyan-500/50"
-              />
-              <button
-                type="button"
-                onClick={() => setShowToken((value) => !value)}
-                className="absolute right-2 top-2 text-slate-500 hover:text-cyan-300"
-                aria-label={showToken ? "Hide auth token" : "Show auth token"}
-              >
-                {showToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
+        <div className="numeric-fields">
+          {[
+            ["max_pages", "Page limit", 1, 500, "pages"],
+            ["workers", "Concurrent workers", 1, 20, "workers"],
+            ["timeout", "Request timeout", 1, 60, "seconds"],
+          ].map(([key, label, min, max, unit]) => (
+            <label key={key}>
+              <span className="field-label">{label}</span>
+              <div className="number-field">
+                <input
+                  type="number"
+                  required
+                  min={min}
+                  max={max}
+                  step={1}
+                  value={options[key]}
+                  onChange={(e) =>
+                    update(
+                      key,
+                      e.target.value === "" ? "" : Number(e.target.value),
+                    )
+                  }
+                />
+                <span>{unit}</span>
               </div>
-            </div>
-            <div>
-              <label className="block text-xs text-slate-500 mb-1">
-                Custom Headers
-              </label>
-              <textarea
-                rows={3}
-                placeholder={"Header: Value\nHeader2: Value2"}
-                value={advanced.formatted_headers}
-                onChange={(e) =>
-                  setAdvanced({ ...advanced, formatted_headers: e.target.value })
-                }
-                disabled={isScanning}
-                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 font-mono outline-none focus:border-cyan-500/50"
+              <small>
+                {min}–{max} {unit}
+              </small>
+            </label>
+          ))}
+        </div>
+        <div className="scan-toggles">
+          {[
+            [
+              "verify_ssl",
+              "Verify TLS certificates",
+              "Validate the target's certificate chain.",
+            ],
+            [
+              "obey_robots",
+              "Respect robots.txt",
+              "Honor the target's crawl directives.",
+            ],
+          ].map(([key, label, help]) => (
+            <label className="toggle-card" key={key}>
+              <div>
+                <strong>{label}</strong>
+                <span>{help}</span>
+              </div>
+              <input
+                type="checkbox"
+                checked={options[key]}
+                onChange={(e) => update(key, e.target.checked)}
               />
-            </div>
-            <div>
-              <label className="block text-xs text-slate-500 mb-1">
-                Cookies
-              </label>
-              <textarea
-                rows={3}
-                placeholder={"name=value; name2=value2"}
-                value={advanced.formatted_cookies}
+              <span className="toggle-track" />
+            </label>
+          ))}
+        </div>
+        <button
+          type="button"
+          className={`advanced-toggle ${advanced ? "open" : ""}`}
+          aria-expanded={advanced}
+          aria-controls="advanced-config"
+          onClick={() => setAdvanced(!advanced)}
+        >
+          <Settings2 size={16} />
+          <span>
+            Advanced configuration
+            <small>
+              Authentication, headers, exclusions & internal targets
+            </small>
+          </span>
+          <ChevronDown size={17} />
+        </button>
+        {advanced && (
+          <div id="advanced-config" className="advanced-config">
+            <label className="toggle-card internal-toggle">
+              <div>
+                <strong>Allow private/internal target</strong>
+                <span>
+                  Enable for authorized RFC1918 systems. Loopback, link-local,
+                  and metadata addresses remain blocked.
+                </span>
+              </div>
+              <input
+                type="checkbox"
+                checked={options.allow_private_targets}
                 onChange={(e) =>
-                  setAdvanced({ ...advanced, formatted_cookies: e.target.value })
+                  update("allow_private_targets", e.target.checked)
                 }
-                disabled={isScanning}
-                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 font-mono outline-none focus:border-cyan-500/50"
               />
+              <span className="toggle-track" />
+            </label>
+            <label className="field-label" htmlFor="auth-token">
+              Target bearer token
+            </label>
+            <div className="key-input">
+              <LockKeyhole size={16} />
+              <input
+                id="auth-token"
+                type={showToken ? "text" : "password"}
+                autoComplete="off"
+                value={options.auth_token}
+                onChange={(e) => update("auth_token", e.target.value)}
+                placeholder="Optional target authentication token"
+              />
+              <button
+                type="button"
+                aria-label={
+                  showToken ? "Hide target token" : "Show target token"
+                }
+                onClick={() => setShowToken(!showToken)}
+              >
+                {showToken ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
             </div>
-            <div>
-              <label className="block text-xs text-slate-500 mb-1">
-                Exclude Paths
-              </label>
-              <textarea
-                rows={2}
-                placeholder={"/admin\n/logout\n/api"}
-                value={advanced.exclude_paths}
-                onChange={(e) =>
-                  setAdvanced({ ...advanced, exclude_paths: e.target.value })
-                }
-                disabled={isScanning}
-                className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 font-mono outline-none focus:border-cyan-500/50"
-              />
+            <div className="advanced-textareas">
+              {[
+                [
+                  "headers_str",
+                  "Custom headers",
+                  "X-Header: value\nX-Other-Header: value",
+                ],
+                ["cookies_str", "Cookies", "session=value; preference=value"],
+                [
+                  "exclude_paths_str",
+                  "Excluded paths",
+                  "/logout\n/admin\n/destructive-actions",
+                ],
+              ].map(([key, label, placeholder]) => (
+                <label key={key}>
+                  <span className="field-label">{label}</span>
+                  <textarea
+                    rows={key === "exclude_paths_str" ? 3 : 2}
+                    value={options[key]}
+                    onChange={(e) => update(key, e.target.value)}
+                    placeholder={placeholder}
+                  />
+                </label>
+              ))}
             </div>
           </div>
         )}
-      </div>
-
-      <label className="flex items-start gap-3 rounded-xl border border-slate-800 bg-slate-950/40 p-3 text-sm text-slate-300">
-        <input
-          type="checkbox"
-          checked={authorized}
-          onChange={(e) => setAuthorized(e.target.checked)}
-          disabled={isScanning}
-          className="mt-1 h-4 w-4 rounded border-slate-600 bg-slate-900 text-cyan-500 focus:ring-cyan-500"
-        />
-        <span>
-          I confirm I am authorized to scan this target and will keep concurrency/rate limits appropriate.
-        </span>
-      </label>
-
+        <label className="authorization">
+          <input
+            type="checkbox"
+            checked={authorized}
+            onChange={(e) => setAuthorized(e.target.checked)}
+            required
+          />
+          <ShieldCheck size={19} />
+          <span>
+            <strong>I am authorized to test this target.</strong>
+            <small>
+              I own this system or have explicit permission, and have chosen
+              appropriate scan limits.
+            </small>
+          </span>
+        </label>
+      </fieldset>
       {error && (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+        <div className="form-error" role="alert">
           {error}
         </div>
       )}
-
-      {/* Submit / Stop Button */}
-      <div className="pt-2">
-        {!isScanning ? (
+      <div className="scan-submit">
+        <span>
+          <ShieldCheck size={14} /> Bounded, same-origin assessment
+        </span>
+        {isScanning ? (
           <button
-            type="submit"
-            disabled={startScan.isPending || !url || !isValidUrl || !authorized}
-            className="w-full relative group overflow-hidden rounded-xl p-[1px] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="button danger-button"
+            type="button"
+            disabled={stopPending}
+            onClick={onStop}
           >
-            <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-xl" />
-            <div className="absolute inset-[1px] bg-slate-900 rounded-[11px] group-hover:bg-slate-800/90 transition-colors" />
-            <div className="relative flex items-center justify-center gap-2 py-3 text-cyan-400 font-bold tracking-wide group-hover:text-cyan-300 transition-colors">
-              <Play className="w-5 h-5 fill-current" />
-              {startScan.isPending ? "STARTING..." : "INITIATE ACTIVE SCAN"}
-            </div>
+            <Square size={15} />
+            {stopPending ? "Stopping…" : "Stop current scan"}
           </button>
         ) : (
           <button
-            type="button"
-            onClick={onStop}
-            className="w-full flex items-center justify-center gap-2 py-3.5 bg-red-500/10 border border-red-500/20 text-red-500 rounded-xl font-bold hover:bg-red-500/20 transition-colors"
+            type="submit"
+            className="button primary"
+            disabled={!valid || !authorized || start.isPending}
           >
-            <Square className="w-5 h-5 fill-current" />
-            TERMINATE SCAN
+            {start.isPending ? "Initializing…" : "Launch assessment"}
+            <ArrowRight size={16} />
           </button>
         )}
       </div>

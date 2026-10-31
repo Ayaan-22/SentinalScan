@@ -1,314 +1,264 @@
-import React from "react";
-import { useScanResults, useScanStatus } from "../scan/scan.hooks";
-import { FindingsTable } from "./FindingsTable";
-import { Loader2, Shield, Download, BarChart3, FileDown } from "lucide-react";
+import { useState } from "react";
 import {
-  PieChart,
-  Pie,
-  Cell,
-  ResponsiveContainer,
-  Tooltip,
-  Legend,
-} from "recharts";
+  ArrowDownToLine,
+  ArrowRight,
+  Fingerprint,
+  Search,
+  SlidersHorizontal,
+  X,
+} from "lucide-react";
+import { FindingsTable } from "./FindingsTable";
+import { Select } from "../../components/Select";
+import { SEVERITIES, severityCounts } from "../../app/utils";
 
-const SEVERITY_COLORS = {
-  Critical: "#ef4444",
-  High: "#f97316",
-  Medium: "#eab308",
-  Low: "#22c55e",
-  Info: "#3b82f6",
-};
-
-function SeverityChart({ stats }) {
-  const chartData = [
-    { name: "Critical", value: stats.critical, color: SEVERITY_COLORS.Critical },
-    { name: "High", value: stats.high, color: SEVERITY_COLORS.High },
-    { name: "Medium", value: stats.medium, color: SEVERITY_COLORS.Medium },
-    { name: "Low", value: stats.low, color: SEVERITY_COLORS.Low },
-    { name: "Info", value: stats.info, color: SEVERITY_COLORS.Info },
-  ].filter((d) => d.value > 0);
-
-  if (chartData.length === 0) return null;
-
-  return (
-    <div className="bg-slate-900/50 rounded-2xl border border-slate-800 p-4">
-      <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-        <BarChart3 className="w-3.5 h-3.5" />
-        Severity Distribution
-      </h3>
-      <ResponsiveContainer width="100%" height={180}>
-        <PieChart>
-          <Pie
-            data={chartData}
-            cx="50%"
-            cy="50%"
-            innerRadius={45}
-            outerRadius={70}
-            paddingAngle={3}
-            dataKey="value"
-            animationBegin={0}
-            animationDuration={600}
-          >
-            {chartData.map((entry, index) => (
-              <Cell
-                key={`cell-${index}`}
-                fill={entry.color}
-                stroke="transparent"
-                style={{ filter: `drop-shadow(0 0 4px ${entry.color}40)` }}
-              />
-            ))}
-          </Pie>
-          <Tooltip
-            contentStyle={{
-              backgroundColor: "#0f172a",
-              border: "1px solid #1e293b",
-              borderRadius: "0.75rem",
-              fontSize: "0.75rem",
-              color: "#e2e8f0",
-            }}
-            formatter={(value, name) => [`${value} finding${value !== 1 ? "s" : ""}`, name]}
-          />
-          <Legend
-            verticalAlign="bottom"
-            iconType="circle"
-            iconSize={8}
-            formatter={(value) => (
-              <span className="text-xs text-slate-400">{value}</span>
-            )}
-          />
-        </PieChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}
-
-export function FindingsDashboard({ scanId }) {
-  const [severityFilter, setSeverityFilter] = React.useState("all");
-  const [search, setSearch] = React.useState("");
-  const [sortBy, setSortBy] = React.useState("severity");
-  const { data: status } = useScanStatus(scanId);
-  const isScanning =
-    status?.status === "running" || status?.status === "pending";
-
-  const { data: results, isLoading } = useScanResults(scanId, isScanning);
-
-  const filteredResults = React.useMemo(() => {
-    const needle = search.trim().toLowerCase();
-    const severityRank = { Critical: 0, High: 1, Medium: 2, Low: 3, Info: 4 };
-    return [...(results || [])]
-      .filter((finding) => {
-        const severity = finding.severity_level || "Info";
-        if (severityFilter !== "all" && severity.toLowerCase() !== severityFilter) return false;
-        if (!needle) return true;
-        return `${finding.url} ${finding.description} ${finding.evidence} ${finding.vuln_type}`
-          .toLowerCase()
-          .includes(needle);
-      })
-      .sort((a, b) => {
-        if (sortBy === "score") return (b.severity_score || 0) - (a.severity_score || 0);
-        if (sortBy === "time") return (b.timestamp || 0) - (a.timestamp || 0);
-        if (sortBy === "url") return (a.url || "").localeCompare(b.url || "");
-        return (severityRank[a.severity_level] ?? 5) - (severityRank[b.severity_level] ?? 5);
-      });
-  }, [results, search, severityFilter, sortBy]);
-
-  // Calculate statistics
-  const stats = React.useMemo(() => {
-    const initial = { total: 0, critical: 0, high: 0, medium: 0, low: 0, info: 0 };
-    if (!results) return initial;
-
-    return results.reduce((acc, curr) => {
-      const sev = curr.severity_level?.toLowerCase() || "info";
-      if (acc[sev] !== undefined) acc[sev]++;
-      acc.total++;
-      return acc;
-    }, initial);
-  }, [results]);
-
-  const handleExport = () => {
-    if (!results || results.length === 0) return;
-    const blob = new Blob([JSON.stringify(results, null, 2)], {
-      type: "application/json",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `sentinalscan-report-${scanId?.slice(0, 8) || "scan"}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+export function FindingsDashboard({
+  findings = [],
+  loading,
+  error,
+  search,
+  setSearch,
+  severity,
+  setSeverity,
+  compact = false,
+  onViewAll,
+  onExport,
+}) {
+  const [sort, setSort] = useState("severity");
+  const [type, setType] = useState("all");
+  const [page, setPage] = useState(1);
+  const counts = severityCounts(findings);
+  const needle = search.trim().toLowerCase();
+  const rank = Object.fromEntries(SEVERITIES.map((s, i) => [s.name, i]));
+  const types = [...new Set(findings.map((f) => f.vuln_type))];
+  const activeType = type === "all" || types.includes(type) ? type : "all";
+  const filtered = findings
+    .filter(
+      (f) =>
+        (severity === "all" || f.severity_level === severity) &&
+        (activeType === "all" || f.vuln_type === activeType) &&
+        (!needle ||
+          [
+            f.url,
+            f.vuln_type,
+            f.description,
+            f.evidence,
+            f.remediation,
+            f.confidence,
+          ].some((v) =>
+            String(v || "")
+              .toLowerCase()
+              .includes(needle),
+          )),
+    )
+    .sort((a, b) =>
+      sort === "score"
+        ? b.severity_score - a.severity_score
+        : sort === "recent"
+          ? (b.timestamp || 0) - (a.timestamp || 0)
+          : sort === "url"
+            ? a.url.localeCompare(b.url)
+            : (rank[a.severity_level] ?? 5) - (rank[b.severity_level] ?? 5),
+    );
+  const perPage = 10;
+  const pages = Math.max(1, Math.ceil(filtered.length / perPage));
+  const currentPage = Math.min(page, pages);
+  const shown = compact
+    ? filtered.slice(0, 4)
+    : filtered.slice((currentPage - 1) * perPage, currentPage * perPage);
+  const clear = () => {
+    setSeverity("all");
+    setSearch("");
+    setType("all");
+    setPage(1);
   };
-
-  const handleExportCsv = () => {
-    if (!results || results.length === 0) return;
-    const escape = (value) => `"${String(value ?? "").replaceAll('"', '""')}"`;
-    const rows = [
-      ["severity", "score", "type", "url", "confidence", "description", "evidence", "remediation"],
-      ...results.map((finding) => [
-        finding.severity_level,
-        finding.severity_score,
-        finding.vuln_type,
-        finding.url,
-        finding.confidence,
-        finding.description,
-        finding.evidence,
-        finding.remediation,
-      ]),
-    ];
-    const blob = new Blob([rows.map((row) => row.map(escape).join(",")).join("\n")], {
-      type: "text/csv",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `sentinalscan-report-${scanId?.slice(0, 8) || "scan"}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  if (!scanId) {
-    return (
-      <div className="flex flex-col items-center justify-center p-20 text-slate-500">
-        <div className="w-20 h-20 rounded-full bg-slate-800/50 flex items-center justify-center border border-slate-700 mb-6">
-          <Shield className="w-10 h-10 text-slate-600" />
-        </div>
-        <p className="text-lg font-medium text-slate-400 mb-1">No Active Scan</p>
-        <p className="text-sm text-slate-600">Configure and start a scan to see findings</p>
-      </div>
-    );
-  }
-
-  if (isScanning && (!results || results.length === 0)) {
-    return (
-      <div className="flex flex-col items-center justify-center p-20 text-slate-500">
-        <div className="relative mb-6">
-          <div className="w-16 h-16 rounded-full border-2 border-slate-800 border-t-cyan-500 animate-spin" />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-3 h-3 bg-cyan-500 rounded-full animate-pulse" />
-          </div>
-        </div>
-        <p className="text-lg font-medium text-slate-300">Scan In Progress</p>
-        <p className="text-sm mt-1 text-slate-500">
-          Results will appear here as they are discovered
-        </p>
-        {status?.pages_scanned > 0 && (
-          <p className="text-xs mt-3 text-cyan-400 font-mono">
-            {status.pages_scanned} pages scanned...
-          </p>
-        )}
-      </div>
-    );
-  }
-
-  if (isLoading && !results) {
-    return (
-      <div className="flex flex-col items-center justify-center p-20 text-slate-500 animate-pulse">
-        <Loader2 className="w-8 h-8 mb-4 animate-spin text-cyan-500" />
-        <p>Loading security profile...</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-6">
-      {/* Scanning indicator when results are streaming in */}
-      {isScanning && results && results.length > 0 && (
-        <div className="flex items-center gap-2 px-4 py-2 bg-cyan-500/5 border border-cyan-500/20 rounded-xl text-xs text-cyan-400 font-medium">
-          <div className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse" />
-          Scan in progress — findings are updating live
-          {status?.pages_scanned > 0 && (
-            <span className="ml-auto font-mono text-slate-500">
-              {status.pages_scanned} pages scanned
-            </span>
+    <section className="findings-section">
+      <div className="section-header">
+        <div>
+          <span className="eyebrow">INVESTIGATE & REMEDIATE</span>
+          <h2>
+            {compact ? "Priority findings" : "Findings explorer"}
+            <span className="count-pill">{findings.length}</span>
+          </h2>
+        </div>
+        <div className="inline-actions">
+          {compact ? (
+            <button className="text-button" onClick={onViewAll}>
+              View all findings <ArrowRight size={15} />
+            </button>
+          ) : (
+            <>
+              <button
+                className="button secondary small"
+                disabled={!findings.length}
+                onClick={() => onExport("json")}
+              >
+                <ArrowDownToLine size={14} /> JSON
+              </button>
+              <button
+                className="button secondary small"
+                disabled={!findings.length}
+                onClick={() => onExport("csv")}
+              >
+                <ArrowDownToLine size={14} /> CSV
+              </button>
+            </>
           )}
         </div>
-      )}
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-        {[
-          { label: "Total", value: stats.total, bg: "bg-slate-950/50", border: "border-slate-800", text: "text-white" },
-          { label: "Critical", value: stats.critical, bg: "bg-red-950/20", border: "border-red-500/20", text: "text-red-500" },
-          { label: "High", value: stats.high, bg: "bg-orange-950/20", border: "border-orange-500/20", text: "text-orange-500" },
-          { label: "Medium", value: stats.medium, bg: "bg-yellow-950/20", border: "border-yellow-500/20", text: "text-yellow-500" },
-          { label: "Low", value: stats.low, bg: "bg-green-950/20", border: "border-green-500/20", text: "text-green-500" },
-          { label: "Info", value: stats.info, bg: "bg-blue-950/20", border: "border-blue-500/20", text: "text-blue-500" },
-        ].map(({ label, value, bg, border, text }) => (
-          <div
-            key={label}
-            className={`${bg} p-3 rounded-xl border ${border} flex flex-col items-center justify-center`}
-          >
-            <span className={`text-xl font-bold ${text} mb-0.5 tabular-nums`}>
-              {value}
-            </span>
-            <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">
-              {label}
-            </span>
-          </div>
-        ))}
       </div>
-
-      {/* Severity Chart */}
-      {stats.total > 0 && <SeverityChart stats={stats} />}
-
-      {/* Actions Bar */}
-      {results && results.length > 0 && (
-        <div className="flex flex-col gap-3">
-          <div className="grid gap-2 md:grid-cols-[1fr_160px_160px]">
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search URL, description, evidence"
-              className="rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-slate-200 outline-none focus:border-cyan-500/60"
-            />
-            <select
-              value={severityFilter}
-              onChange={(e) => setSeverityFilter(e.target.value)}
-              className="rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-slate-200 outline-none focus:border-cyan-500/60"
+      <div className="panel findings-panel">
+        {!compact && (
+          <>
+            <div
+              className="filter-tabs"
+              aria-label="Filter findings by severity"
             >
-              <option value="all">All severities</option>
-              <option value="critical">Critical</option>
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
-              <option value="info">Info</option>
-            </select>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2 text-sm text-slate-200 outline-none focus:border-cyan-500/60"
-            >
-              <option value="severity">Sort by severity</option>
-              <option value="score">Sort by score</option>
-              <option value="time">Sort by time</option>
-              <option value="url">Sort by URL</option>
-            </select>
+              {[
+                { name: "all", label: "All findings", count: findings.length },
+                ...SEVERITIES.map((s) => ({
+                  name: s.name,
+                  label: s.name,
+                  count: counts[s.name],
+                })),
+              ].map((s) => (
+                <button
+                  key={s.name}
+                  className={severity === s.name ? "selected" : ""}
+                  onClick={() => {
+                    setSeverity(s.name);
+                    setPage(1);
+                  }}
+                  aria-pressed={severity === s.name}
+                >
+                  {s.name !== "all" && (
+                    <i className={`severity-dot ${s.name.toLowerCase()}`} />
+                  )}{" "}
+                  {s.label}
+                  <span>{s.count}</span>
+                </button>
+              ))}
+            </div>
+            <div className="findings-toolbar">
+              <label className="table-search">
+                <Search size={16} />
+                <input
+                  aria-label="Search finding details"
+                  value={search}
+                  placeholder="Search findings, URLs, evidence…"
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setPage(1);
+                  }}
+                />
+              </label>
+              <div className="table-controls">
+                <SlidersHorizontal size={15} />
+                <Select
+                  label="Filter by detection module"
+                  value={activeType}
+                  onChange={(value) => {
+                    setType(value);
+                    setPage(1);
+                  }}
+                  options={[
+                    { value: "all", label: "All modules" },
+                    ...types.map((type) => ({ value: type, label: type })),
+                  ]}
+                />
+                <Select
+                  label="Sort findings"
+                  value={sort}
+                  onChange={setSort}
+                  options={[
+                    { value: "severity", label: "Severity first" },
+                    { value: "score", label: "Highest score" },
+                    { value: "recent", label: "Most recent" },
+                    { value: "url", label: "Endpoint A–Z" },
+                  ]}
+                />
+              </div>
+            </div>
+          </>
+        )}
+        {error && (
+          <div className="table-error" role="alert">
+            Could not refresh findings: {error}
           </div>
-          <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-xs text-slate-500">
-            <BarChart3 className="w-4 h-4" />
-            <span>{filteredResults.length} shown, {results.length} total across {new Set(results.map((r) => r.url)).size} affected URLs</span>
+        )}
+        {loading && !findings.length ? (
+          <div className="empty-state">
+            <div className="empty-symbol scanning">
+              <Fingerprint size={28} />
+            </div>
+            <h3>Gathering intelligence</h3>
+            <p>Findings appear as the engine reports them.</p>
           </div>
-          <div className="flex gap-2">
-          <button
-            onClick={handleExport}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-400 hover:text-cyan-400 bg-slate-900/50 hover:bg-slate-900 border border-slate-800 rounded-lg transition-all"
-          >
-            <Download className="w-3.5 h-3.5" />
-            Export JSON
-          </button>
-          <button
-            onClick={handleExportCsv}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-400 hover:text-cyan-400 bg-slate-900/50 hover:bg-slate-900 border border-slate-800 rounded-lg transition-all"
-          >
-            <FileDown className="w-3.5 h-3.5" />
-            Export CSV
-          </button>
+        ) : !shown.length ? (
+          <div className="empty-state">
+            <div className="empty-symbol">
+              <Fingerprint size={28} />
+            </div>
+            <h3>
+              {findings.length
+                ? "No matching signals"
+                : "No findings to review yet"}
+            </h3>
+            <p>
+              {findings.length
+                ? "Adjust the filters or search across another field."
+                : "Run or select an assessment to inspect severity, evidence, and remediation."}
+            </p>
+            {(severity !== "all" || search || type !== "all") && (
+              <button className="button secondary small" onClick={clear}>
+                <X size={13} /> Clear filters
+              </button>
+            )}
           </div>
-          </div>
+        ) : (
+          <FindingsTable
+            key={`${severity}-${type}-${search}-${currentPage}`}
+            findings={shown}
+          />
+        )}
+        <div className="table-footer">
+          <span>
+            <span className="status-dot" />
+            {compact
+              ? `${shown.length} priority findings`
+              : `${filtered.length} of ${findings.length} findings`}{" "}
+            <span className="footer-separator">/</span>{" "}
+            {new Set(filtered.map((f) => f.url)).size} affected URLs
+          </span>
+          {compact ? (
+            <span>
+              Click a finding to inspect evidence <ArrowUpRightIcon />
+            </span>
+          ) : (
+            <div className="pagination">
+              <button
+                disabled={currentPage === 1}
+                onClick={() => setPage(currentPage - 1)}
+                aria-label="Previous findings page"
+              >
+                ←
+              </button>
+              <span>
+                {currentPage} / {pages}
+              </span>
+              <button
+                disabled={currentPage === pages}
+                onClick={() => setPage(currentPage + 1)}
+                aria-label="Next findings page"
+              >
+                →
+              </button>
+            </div>
+          )}
         </div>
-      )}
-
-      <FindingsTable findings={filteredResults} />
-    </div>
+      </div>
+    </section>
   );
+}
+function ArrowUpRightIcon() {
+  return <ArrowRight size={12} style={{ transform: "rotate(-45deg)" }} />;
 }

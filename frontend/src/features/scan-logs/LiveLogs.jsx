@@ -1,12 +1,25 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Check, Copy, Download, Pause, Play, Search, Terminal, Trash2 } from "lucide-react";
+import {
+  Check,
+  Copy,
+  Download,
+  Pause,
+  Play,
+  Search,
+  Terminal,
+  Trash2,
+} from "lucide-react";
 import clsx from "clsx";
 import { useLiveLogStream } from "./useLiveLogStream";
 
 const LEVELS = ["INFO", "WARNING", "ERROR", "CRITICAL"];
 
 export const LiveLogs = ({ scanId, isScanning, statusLogs = [] }) => {
-  const { logs, connectionStatus, clearLogs } = useLiveLogStream(scanId, isScanning, statusLogs);
+  const { logs, connectionStatus, clearLogs } = useLiveLogStream(
+    scanId,
+    isScanning,
+    statusLogs,
+  );
   const logScrollRef = useRef(null);
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState("");
@@ -20,7 +33,9 @@ export const LiveLogs = ({ scanId, isScanning, statusLogs = [] }) => {
       const level = log.level || "INFO";
       if (!levels.has(level)) return false;
       if (!needle) return true;
-      return `${log.message || ""} ${log.level || ""}`.toLowerCase().includes(needle);
+      return `${log.message || ""} ${log.level || ""}`
+        .toLowerCase()
+        .includes(needle);
     });
   }, [logs, levels, query]);
 
@@ -60,7 +75,10 @@ export const LiveLogs = ({ scanId, isScanning, statusLogs = [] }) => {
 
   const toText = () =>
     filteredLogs
-      .map((log) => `[${formatTime(log.timestamp)}] ${log.level || "INFO"}: ${log.message || ""}`)
+      .map(
+        (log) =>
+          `[${formatTime(log.timestamp)}] ${log.level || "INFO"}: ${log.message || ""}`,
+      )
       .join("\n");
 
   const handleCopy = async () => {
@@ -99,17 +117,21 @@ export const LiveLogs = ({ scanId, isScanning, statusLogs = [] }) => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Terminal className="w-4 h-4 text-cyan-400" />
-            <span className="text-slate-400 uppercase tracking-widest font-semibold text-[10px]">
+            <span className="stream-label text-slate-400 uppercase tracking-widest font-semibold text-[10px]">
               Live Log Stream
             </span>
             <span
               className={clsx(
-                "rounded-full border px-2 py-0.5 text-[10px] font-semibold",
-                connectionStatus === "Connected" && "border-green-500/30 bg-green-500/10 text-green-300",
-                connectionStatus === "Reconnecting" && "border-yellow-500/30 bg-yellow-500/10 text-yellow-300",
-                connectionStatus === "Polling fallback" && "border-blue-500/30 bg-blue-500/10 text-blue-300",
-                !["Connected", "Reconnecting", "Polling fallback"].includes(connectionStatus) &&
-                  "border-slate-700 bg-slate-900 text-slate-400"
+                "stream-status rounded-full border px-2 py-0.5 text-[10px] font-semibold",
+                connectionStatus === "Connected" &&
+                  "border-green-500/30 bg-green-500/10 text-green-300",
+                connectionStatus === "Reconnecting" &&
+                  "border-yellow-500/30 bg-yellow-500/10 text-yellow-300",
+                connectionStatus === "Polling fallback" &&
+                  "border-blue-500/30 bg-blue-500/10 text-blue-300",
+                !["Connected", "Reconnecting", "Polling fallback"].includes(
+                  connectionStatus,
+                ) && "border-slate-700 bg-slate-900 text-slate-400",
               )}
             >
               {connectionStatus}
@@ -117,19 +139,39 @@ export const LiveLogs = ({ scanId, isScanning, statusLogs = [] }) => {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <button type="button" onClick={() => setAutoScroll((v) => !v)} className="log-action">
-              {autoScroll ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
+            <button
+              type="button"
+              onClick={() => setAutoScroll((v) => !v)}
+              className="log-action"
+            >
+              {autoScroll ? (
+                <Pause className="w-3 h-3" />
+              ) : (
+                <Play className="w-3 h-3" />
+              )}
               {autoScroll ? "Pause" : "Resume"}
             </button>
             <button type="button" onClick={handleCopy} className="log-action">
-              {copied ? <Check className="w-3 h-3 text-green-400" /> : <Copy className="w-3 h-3" />}
+              {copied ? (
+                <Check className="w-3 h-3 text-green-400" />
+              ) : (
+                <Copy className="w-3 h-3" />
+              )}
               {copied ? "Copied" : "Copy"}
             </button>
-            <button type="button" onClick={handleDownload} className="log-action">
+            <button
+              type="button"
+              onClick={handleDownload}
+              className="log-action"
+            >
               <Download className="w-3 h-3" />
               Download
             </button>
-            <button type="button" onClick={clearLogs} className="log-action text-red-300 hover:text-red-200">
+            <button
+              type="button"
+              onClick={clearLogs}
+              className="log-action text-red-300 hover:text-red-200"
+            >
               <Trash2 className="w-3 h-3" />
               Clear
             </button>
@@ -154,10 +196,10 @@ export const LiveLogs = ({ scanId, isScanning, statusLogs = [] }) => {
                 type="button"
                 onClick={() => toggleLevel(level)}
                 className={clsx(
-                  "rounded-lg border px-2 py-1.5 text-[10px] font-bold",
+                  "stream-level rounded-lg border px-2 py-1.5 text-[10px] font-bold",
                   levels.has(level)
                     ? "border-cyan-500/30 bg-cyan-500/10 text-cyan-300"
-                    : "border-slate-800 bg-slate-900 text-slate-500"
+                    : "border-slate-800 bg-slate-900 text-slate-500",
                 )}
               >
                 {level}
@@ -168,20 +210,32 @@ export const LiveLogs = ({ scanId, isScanning, statusLogs = [] }) => {
         {copyError && <p className="text-[10px] text-red-300">{copyError}</p>}
       </div>
 
-      <div ref={logScrollRef} className="flex-1 overflow-y-auto space-y-1 pr-2">
+      <div
+        ref={logScrollRef}
+        className="stream-entries flex-1 overflow-y-auto space-y-1 pr-2"
+      >
         {filteredLogs.length === 0 ? (
           <div className="h-full flex items-center justify-center text-slate-600 italic">
-            {scanId ? "Waiting for log stream..." : "Start or select a scan to view logs"}
+            {scanId
+              ? "Waiting for log stream..."
+              : "Start or select a scan to view logs"}
           </div>
         ) : (
           filteredLogs.map((log) => (
             <div
               key={`${log.timestamp}-${log.level}-${log.message}`}
-              className={clsx("grid grid-cols-[86px_72px_1fr] gap-3 rounded px-2 py-1", getLevelColor(log.level))}
+              className={clsx(
+                "stream-entry grid grid-cols-[86px_72px_1fr] gap-3 rounded px-2 py-1",
+                getLevelColor(log.level),
+              )}
             >
-              <span className="opacity-50 text-[10px] pt-0.5">[{formatTime(log.timestamp)}]</span>
+              <span className="stream-timestamp opacity-50 text-[10px] pt-0.5">
+                [{formatTime(log.timestamp)}]
+              </span>
               <span className="font-bold">{log.level || "INFO"}</span>
-              <span className="break-words whitespace-pre-wrap">{log.message}</span>
+              <span className="break-words whitespace-pre-wrap">
+                {log.message}
+              </span>
             </div>
           ))
         )}
