@@ -1,9 +1,12 @@
-from pydantic import BaseModel, Field, field_validator
-from typing import Optional, List, Dict, Any
-from enum import Enum
 from datetime import datetime
+from enum import Enum
+from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
+
+from pydantic import BaseModel, Field, field_validator
+
 from .vulnerability import Vulnerability
+
 
 class ScanStatus(str, Enum):
     PENDING = "pending"
@@ -22,10 +25,10 @@ class ScanRequest(BaseModel):
     timeout: int = Field(15, ge=1, le=60)
     
     # Optional advanced config
-    auth_token: Optional[str] = None
-    cookies: Optional[Dict[str, str]] = None
-    headers: Optional[Dict[str, str]] = None
-    exclude_paths: List[str] = Field(default_factory=list)
+    auth_token: str | None = None
+    cookies: dict[str, str] | None = None
+    headers: dict[str, str] | None = None
+    exclude_paths: list[str] = Field(default_factory=list)
 
     @field_validator("target_url")
     def validate_url(cls, v: str) -> str:
@@ -49,8 +52,8 @@ class ScanResponse(BaseModel):
     status: ScanStatus
     target_url: str
     start_time: datetime
-    end_time: Optional[datetime] = None
+    end_time: datetime | None = None
     pages_scanned: int = 0
     vulnerabilities_count: int = 0
-    results: List[Vulnerability] = Field(default_factory=list)
-    recent_logs: List[Dict[str, Any]] = Field(default_factory=list)
+    results: list[Vulnerability] = Field(default_factory=list)
+    recent_logs: list[dict[str, Any]] = Field(default_factory=list)

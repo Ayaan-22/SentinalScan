@@ -1,10 +1,8 @@
-import os
-
-os.environ["SENTINAL_API_KEY"] = "ci_test_key_abcdefghijklmnop12345678"
-
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from starlette.responses import JSONResponse, PlainTextResponse
+from starlette.websockets import WebSocketDisconnect
 
 from app.core.security import is_valid_api_key, validate_configured_api_key
 from app.main import app
@@ -13,11 +11,8 @@ from app.middleware import SensitiveDataSanitizer
 
 def test_configured_api_key_rejects_known_defaults():
     for value in ("", "short", "dev_api_key_12345", "changeme_in_production"):
-        try:
+        with pytest.raises(RuntimeError, match="API_KEY must be at least 32 characters"):
             validate_configured_api_key(value)
-        except RuntimeError:
-            continue
-        raise AssertionError(f"{value!r} should be rejected")
 
 
 def test_constant_time_api_key_helper_accepts_only_correct_key():
@@ -26,22 +21,30 @@ def test_constant_time_api_key_helper_accepts_only_correct_key():
     assert is_valid_api_key(None) is False
 
 
-def test_websocket_requires_api_key():
+@pytest.mark.parametrize("query", ["", "?api_key=wrong-key"])
+def test_websocket_requires_api_key(query):
     client = TestClient(app)
-    try:
-        with client.websocket_connect("/ws/logs/missing-scan"):
-            raise AssertionError("Unauthenticated WebSocket should not connect")
-    except Exception:
-        pass
+    with (
+        pytest.raises(WebSocketDisconnect) as exc_info,
+        client.websocket_connect(f"/ws/logs/missing-scan{query}"),
+    ):
+        pytest.fail("Unauthenticated WebSocket should not connect")
+    assert exc_info.value.code == 1008
 
 
-def test_websocket_accepts_api_key_and_streams_completion_message():
+def test_websocket_accepts_api_key_and_reports_missing_scan():
     client = TestClient(app)
     with client.websocket_connect(
         "/ws/logs/missing-scan?api_key=ci_test_key_abcdefghijklmnop12345678"
     ) as websocket:
-        # Unknown scan has no terminal message; connection success is the auth assertion.
-        websocket.close()
+        assert websocket.receive_json() == {
+            "type": "error",
+            "status": "not_found",
+            "message": "Scan not found",
+        }
+        with pytest.raises(WebSocketDisconnect) as exc_info:
+            websocket.receive_json()
+        assert exc_info.value.code == 1008
 
 
 def test_sensitive_data_sanitizer_redacts_and_content_length_is_correct():

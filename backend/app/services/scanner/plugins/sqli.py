@@ -1,10 +1,13 @@
-from typing import List
-from bs4 import BeautifulSoup
-from .base import BaseCheck
-from app.models.vulnerability import Vulnerability, VulnType, SeverityLevel
-import urllib.parse
-import re
 import logging
+import re
+import urllib.parse
+from typing import ClassVar
+
+from bs4 import BeautifulSoup
+
+from app.models.vulnerability import SeverityLevel, Vulnerability, VulnType
+
+from .base import BaseCheck
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +17,7 @@ class SQLInjection(BaseCheck):
         return VulnType.SQLI
 
     # SQL error patterns by database engine
-    SQL_ERRORS = {
+    SQL_ERRORS: ClassVar[dict[str, list[str]]] = {
         "MySQL": [r"SQL syntax.*MySQL", r"Warning.*mysql_.*", r"MySQLSyntaxErrorException"],
         "PostgreSQL": [r"PostgreSQL.*ERROR", r"Warning.*\Wpg_.*", r"PSQLException"],
         "MSSQL": [r"Driver.* SQL[\-\_\ ]*Server", r"OLE DB.* SQL Server", r"SQLServerException"],
@@ -31,7 +34,7 @@ class SQLInjection(BaseCheck):
                     return db
         return None
 
-    async def check(self, url: str, content: str, forms: List[BeautifulSoup]) -> List[Vulnerability]:
+    async def check(self, url: str, content: str, forms: list[BeautifulSoup]) -> list[Vulnerability]:
         vulns = []
         
         # Safe error/boolean payloads. These are read-only probes and must never
@@ -92,6 +95,6 @@ class SQLInjection(BaseCheck):
                             vulns.append(vuln)
                             break  # Found SQLi in this field, move to next
                     except Exception as e:
-                        logger.debug(f"SQLi test failed on {target_url}: {e}")
+                        logger.debug(f"SQLi test failed on {target_url}: {e}", exc_info=True)
                         
         return vulns

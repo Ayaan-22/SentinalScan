@@ -1,19 +1,21 @@
+import asyncio
+import logging
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from app.core.config import settings
-from app.core.version import APP_VERSION
-from app.core.security import is_valid_api_key, validate_configured_api_key
-from app.core.logging import setup_logging
+
 from app.api.v1.router import api_router
-from app.services.scanner.manager import scan_manager
+from app.core.config import settings
+from app.core.logging import setup_logging
+from app.core.security import is_valid_api_key, validate_configured_api_key
+from app.core.version import APP_VERSION
 from app.middleware import (
     SecurityHeadersMiddleware,
     SensitiveDataSanitizer,
     sanitize_log_message,
 )
-import asyncio
-import logging
+from app.services.scanner.manager import scan_manager
 
 # Setup logging
 setup_logging()
@@ -128,8 +130,8 @@ async def websocket_logs(websocket: WebSocket, scan_id: str):
             
     except WebSocketDisconnect:
         logger.debug(f"WebSocket client disconnected for scan {scan_id}")
-    except Exception as e:
-        logger.error(f"WebSocket error for scan {scan_id}: {e}")
+    except Exception:
+        logger.exception("WebSocket error for scan %s", scan_id)
 
 
 if __name__ == "__main__":

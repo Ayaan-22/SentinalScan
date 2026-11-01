@@ -1,8 +1,10 @@
-from typing import List
-from bs4 import BeautifulSoup
-from .base import BaseCheck
-from app.models.vulnerability import Vulnerability, VulnType, SeverityLevel
 import logging
+
+from bs4 import BeautifulSoup
+
+from app.models.vulnerability import SeverityLevel, Vulnerability, VulnType
+
+from .base import BaseCheck
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +16,7 @@ class CSRFCheck(BaseCheck):
     def vuln_type(self) -> VulnType:
         return VulnType.CSRF
 
-    async def check(self, url: str, content: str, forms: List[BeautifulSoup]) -> List[Vulnerability]:
+    async def check(self, url: str, content: str, forms: list[BeautifulSoup]) -> list[Vulnerability]:
         vulns = []
         
         for form in forms:

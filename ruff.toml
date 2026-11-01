@@ -1,0 +1,5 @@
+# Keep local checks and CI on the same default rule set; do not silently drift
+# when a new Ruff release changes its defaults.
+required-version = "==0.17.3"
+target-version = "py312"
+src = ["backend"]

@@ -6,35 +6,36 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   backend:
     name: Backend
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: "pip"
           cache-dependency-path: |
             backend/requirements.txt
             requirements-dev.txt
+            ruff.toml
 
       - name: Install backend test dependencies
         run: |
           pip install --upgrade pip
           pip install -r requirements-dev.txt
 
-      - name: Install backend quality tools
-        run: pip install ruff bandit
-
       - name: Lint (ruff)
-        run: ruff check backend/
+        run: python -m ruff check backend/
 
       - name: Security scan (bandit)
-        run: bandit -r backend/app/ -ll --skip B101
+        run: python -m bandit -r backend/app/ -ll --skip B101
 
       - name: Compile
         run: cd backend && python -m compileall -q app
@@ -48,14 +49,14 @@ jobs:
 
   frontend:
     name: Frontend
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
           cache-dependency-path: frontend/package-lock.json
 
@@ -64,6 +65,9 @@ jobs:
 
       - name: Lint (ESLint)
         run: cd frontend && npm run lint --if-present
+
+      - name: Run tests
+        run: cd frontend && npm test
 
       - name: Build
         run: cd frontend && npm run build

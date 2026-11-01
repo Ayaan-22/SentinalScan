@@ -1,10 +1,11 @@
-from abc import ABC, abstractmethod
-from typing import List
-from app.models.vulnerability import Vulnerability, VulnType
-from bs4 import BeautifulSoup
-import httpx
 import logging
 import time
+from abc import ABC, abstractmethod
+
+import httpx
+from bs4 import BeautifulSoup
+
+from app.models.vulnerability import Vulnerability, VulnType
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +21,7 @@ class BaseCheck(ABC):
         pass
 
     @abstractmethod
-    async def check(self, url: str, content: str, forms: List[BeautifulSoup]) -> List[Vulnerability]:
+    async def check(self, url: str, content: str, forms: list[BeautifulSoup]) -> list[Vulnerability]:
         """
         Perform the vulnerability check asynchronously.
         :param url: The URL being scanned
@@ -28,7 +29,6 @@ class BaseCheck(ABC):
         :param forms: List of forms found on the page
         :return: List of discovered vulnerabilities
         """
-        pass
     
     def _create_vuln(self, url: str, description: str, evidence: str, 
                      severity_score: float, severity_level: str, 

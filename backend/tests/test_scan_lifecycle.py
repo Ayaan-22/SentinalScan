@@ -2,8 +2,8 @@ import asyncio
 
 import pytest
 
-from app.models.vulnerability import SeverityLevel, Vulnerability, VulnType
 from app.models.scan import ScanRequest, ScanStatus
+from app.models.vulnerability import SeverityLevel, Vulnerability, VulnType
 from app.services.scanner.manager import ScanManager
 
 

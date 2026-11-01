@@ -1,12 +1,13 @@
+
 from fastapi import APIRouter, Depends, HTTPException
-from typing import List
+
+from app.core.security import get_api_key
 from app.models.vulnerability import Vulnerability
 from app.services.scanner.manager import scan_manager
-from app.core.security import get_api_key
 
 router = APIRouter()
 
-@router.get("/{scan_id}/results", response_model=List[Vulnerability], dependencies=[Depends(get_api_key)])
+@router.get("/{scan_id}/results", response_model=list[Vulnerability], dependencies=[Depends(get_api_key)])
 async def get_scan_results(scan_id: str):
     """
     Get the results (vulnerabilities) for a completed scan.

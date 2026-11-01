@@ -1,5 +1,5 @@
-import pytest
 import httpx
+import pytest
 
 from app.models.scan import ScanRequest
 from app.services.scanner.crawler import WebCrawler

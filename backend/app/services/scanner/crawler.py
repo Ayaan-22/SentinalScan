@@ -1,14 +1,15 @@
-import httpx
 import asyncio
-from urllib.parse import parse_qsl, urlencode, urljoin, urlparse, urlunparse
-from typing import Set, List, Optional, Dict
-import logging
-from bs4 import BeautifulSoup
-import urllib.robotparser as robotparser
-import socket
 import ipaddress
-from app.models.scan import ScanRequest
+import logging
+import socket
+from urllib import robotparser
+from urllib.parse import parse_qsl, urlencode, urljoin, urlparse, urlunparse
+
+import httpx
+from bs4 import BeautifulSoup
+
 from app.core.config import settings
+from app.models.scan import ScanRequest
 
 logger = logging.getLogger(__name__)
 
@@ -42,10 +43,10 @@ class WebCrawler:
         self.base_url = self._normalize_url(config.target_url)
         self.base_domain = urlparse(self.base_url).netloc
         self.base_origin = f"{urlparse(self.base_url).scheme}://{self.base_domain}"
-        self.visited: Set[str] = set()
-        self.robots_parser: Optional[robotparser.RobotFileParser] = None
-        self.response_cache: Dict[str, str] = {}
-        self.client: Optional[httpx.AsyncClient] = None
+        self.visited: set[str] = set()
+        self.robots_parser: robotparser.RobotFileParser | None = None
+        self.response_cache: dict[str, str] = {}
+        self.client: httpx.AsyncClient | None = None
         self._semaphore = asyncio.Semaphore(config.workers)
         self._stopped = False
         self.max_response_bytes = 2_000_000
@@ -126,7 +127,7 @@ class WebCrawler:
             logger.warning(f"SSRF blocked: cannot resolve hostname '{hostname}'")
             return False
         except Exception as e:
-            logger.warning(f"SSRF blocked: IP validation error for '{hostname}': {e}")
+            logger.warning(f"SSRF blocked: IP validation error for '{hostname}': {e}", exc_info=True)
             return False
 
     async def _is_valid_link(self, url: str, href: str) -> bool:
@@ -146,10 +147,13 @@ class WebCrawler:
                 return False
 
             # robots.txt compliance check
-            if self.config.obey_robots and self.robots_parser:
-                if not self.robots_parser.can_fetch(settings.USER_AGENT, full_url):
-                    logger.debug(f"robots.txt disallows: {full_url}")
-                    return False
+            if (
+                self.config.obey_robots
+                and self.robots_parser
+                and not self.robots_parser.can_fetch(settings.USER_AGENT, full_url)
+            ):
+                logger.debug(f"robots.txt disallows: {full_url}")
+                return False
 
             # Exclude paths
             if self.config.exclude_paths:
@@ -162,11 +166,9 @@ class WebCrawler:
                            '.css', '.js', '.pdf', '.zip', '.tar', '.gz',
                            '.mp3', '.mp4', '.avi', '.mov', '.woff', '.woff2',
                            '.ttf', '.eot')
-            if any(parsed.path.lower().endswith(ext) for ext in static_exts):
-                return False
-
-            return True
+            return not any(parsed.path.lower().endswith(ext) for ext in static_exts)
         except Exception:
+            logger.debug("Link validation failed", exc_info=True)
             return False
 
     async def validate_target(self) -> None:
@@ -236,9 +238,9 @@ class WebCrawler:
             else:
                 logger.debug(f"robots.txt not found at {robots_url} (HTTP {resp.status_code})")
         except Exception as e:
-            logger.debug(f"Could not fetch robots.txt from {robots_url}: {e}")
+            logger.debug(f"Could not fetch robots.txt from {robots_url}: {e}", exc_info=True)
 
-    async def crawl(self) -> List[str]:
+    async def crawl(self) -> list[str]:
         """Crawl the target using an async queue-based approach."""
         await self.validate_target()
         await self._load_robots_txt()
@@ -269,8 +271,8 @@ class WebCrawler:
                             if link not in self.visited and len(pages) + queue.qsize() < self.config.max_pages:
                                 self.visited.add(link)
                                 await queue.put(link)
-                except Exception as e:
-                    logger.error(f"Worker error crawling {url}: {e}")
+                except Exception:
+                    logger.exception("Worker error crawling %s", url)
                 finally:
                     queue.task_done()
 
@@ -284,7 +286,7 @@ class WebCrawler:
             
             # Wait for remaining tasks with timeout
             await asyncio.wait_for(queue.join(), timeout=10.0)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.warning("Crawl queue join timed out")
         finally:
             # Cancel all workers
@@ -295,7 +297,7 @@ class WebCrawler:
         logger.info(f"Async crawl complete: {len(pages)} pages discovered")
         return pages
 
-    async def _fetch_page(self, url: str) -> Optional[Set[str]]:
+    async def _fetch_page(self, url: str) -> set[str] | None:
         try:
             resp = await self.safe_get(url)
             
@@ -333,7 +335,7 @@ class WebCrawler:
             logger.debug(f"Request error fetching {url}: {e}")
             return None
         except Exception as e:
-            logger.debug(f"Unexpected error fetching {url}: {e}")
+            logger.debug(f"Unexpected error fetching {url}: {e}", exc_info=True)
             return None
 
     async def close(self):

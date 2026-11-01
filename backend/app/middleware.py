@@ -9,6 +9,7 @@ sanitize_log_message()     — escapes HTML-special chars from scan payloads bef
 
 import html
 import re
+
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
@@ -69,7 +70,7 @@ class SensitiveDataSanitizer(BaseHTTPMiddleware):
                     headers=headers,
                     media_type=response.media_type or content_type.split(";")[0],
                 )
-            except Exception:
+            except UnicodeDecodeError:
                 # If decoding fails, return original response
                 headers = dict(response.headers)
                 headers.pop("content-length", None)

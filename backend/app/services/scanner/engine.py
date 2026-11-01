@@ -1,17 +1,19 @@
-import logging
 import asyncio
+import logging
 import time
-from typing import Awaitable, Callable, List, Set, Tuple
+from collections.abc import Awaitable, Callable
+
 from bs4 import BeautifulSoup
+
 from app.models.scan import ScanRequest
 from app.models.vulnerability import Vulnerability
 from app.services.scanner.crawler import WebCrawler
 from app.services.scanner.plugins.base import BaseCheck
-from app.services.scanner.plugins.xss import ReflectedXSS
-from app.services.scanner.plugins.sqli import SQLInjection
+from app.services.scanner.plugins.csrf import CSRFCheck
 from app.services.scanner.plugins.headers import SecurityHeaders
 from app.services.scanner.plugins.sensitive_files import SensitiveFiles
-from app.services.scanner.plugins.csrf import CSRFCheck
+from app.services.scanner.plugins.sqli import SQLInjection
+from app.services.scanner.plugins.xss import ReflectedXSS
 
 logger = logging.getLogger(__name__)
 
@@ -25,10 +27,10 @@ class ScannerEngine:
     ):
         self.config = config
         self.crawler = WebCrawler(config)
-        self.vulnerabilities: List[Vulnerability] = []
+        self.vulnerabilities: list[Vulnerability] = []
         self._stop_event = False
         self._pages_scanned = 0
-        self.plugins: List[BaseCheck] = []
+        self.plugins: list[BaseCheck] = []
         self.on_finding = on_finding
 
     async def _init_plugins(self):
@@ -50,16 +52,17 @@ class ScannerEngine:
     def pages_scanned(self) -> int:
         return self._pages_scanned
 
-    def _extract_forms(self, content: str) -> List[BeautifulSoup]:
+    def _extract_forms(self, content: str) -> list[BeautifulSoup]:
         try:
             # CPU-bound, but BS4 is relatively fast for individual pages
             return BeautifulSoup(content, 'html.parser').find_all('form')
         except Exception:
+            logger.exception("Failed to extract page forms")
             return []
 
     def _deduplicate_vulnerabilities(self) -> None:
         """Remove duplicate vulnerabilities based on (url, vuln_type, description) fingerprint."""
-        seen: Set[Tuple[str, str, str]] = set()
+        seen: set[tuple[str, str, str]] = set()
         unique = []
         for vuln in self.vulnerabilities:
             fingerprint = (
@@ -94,7 +97,7 @@ class ScannerEngine:
         if self.on_finding:
             await self.on_finding(finding)
 
-    async def run(self) -> List[Vulnerability]:
+    async def run(self) -> list[Vulnerability]:
         """Execute the full async scan pipeline."""
         start_time = time.time()
         logger.info('=' * 60)
@@ -151,8 +154,8 @@ class ScannerEngine:
                     except asyncio.CancelledError:
                         logger.info("Scan stopped by user")
                         raise
-                    except Exception as e:
-                        logger.error(f"  Failed to scan {page}: {e}")
+                    except Exception:
+                        logger.exception("Failed to scan %s", page)
                     finally:
                         self._pages_scanned += 1
 

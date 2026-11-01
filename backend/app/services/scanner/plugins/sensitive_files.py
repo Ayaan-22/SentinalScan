@@ -1,10 +1,12 @@
-from typing import List
-from bs4 import BeautifulSoup
-from .base import BaseCheck
-from app.models.vulnerability import Vulnerability, VulnType, SeverityLevel
 import logging
-import httpx
 from urllib.parse import urlparse, urlunparse
+
+import httpx
+from bs4 import BeautifulSoup
+
+from app.models.vulnerability import SeverityLevel, Vulnerability, VulnType
+
+from .base import BaseCheck
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +49,7 @@ class SensitiveFiles(BaseCheck):
     def vuln_type(self) -> VulnType:
         return VulnType.SENSITIVE_FILES
 
-    async def check(self, url: str, content: str, forms: List[BeautifulSoup]) -> List[Vulnerability]:
+    async def check(self, url: str, content: str, forms: list[BeautifulSoup]) -> list[Vulnerability]:
         vulns = []
         parsed = urlparse(url)
         origin = urlunparse((parsed.scheme, parsed.netloc, "", "", "", "")).rstrip("/")
@@ -65,29 +67,28 @@ class SensitiveFiles(BaseCheck):
                 resp = await self.client.get(probe_url, timeout=5, follow_redirects=False)
 
                 # Only flag HTTP 200 with actual content
-                if resp.status_code == 200 and len(resp.text) > 0:
-                    if self._looks_like_real_content(path, resp):
-                        self._reported_paths.add(fingerprint)
-                        severity = self._get_severity(path)
-                        vuln = self._create_vuln(
-                            url=probe_url,
-                            description=f"Sensitive file exposed: {path} ({description})",
-                            evidence=f"HTTP 200 returned for /{path} ({len(resp.text)} bytes)",
-                            severity_score=severity[0],
-                            severity_level=severity[1],  # type: ignore
-                            severity_icon=severity[2],
-                            remediation=(
-                                f"1. Remove or restrict access to /{path}\n"
-                                "2. Configure web server to deny access to sensitive files\n"
-                                "3. Add rules to .htaccess or nginx config to block these paths\n"
-                                "4. Move sensitive files outside the web root"
-                            ),
-                            confidence="Medium"
-                        )
-                        vulns.append(vuln)
+                if resp.status_code == 200 and len(resp.text) > 0 and self._looks_like_real_content(path, resp):
+                    self._reported_paths.add(fingerprint)
+                    severity = self._get_severity(path)
+                    vuln = self._create_vuln(
+                        url=probe_url,
+                        description=f"Sensitive file exposed: {path} ({description})",
+                        evidence=f"HTTP 200 returned for /{path} ({len(resp.text)} bytes)",
+                        severity_score=severity[0],
+                        severity_level=severity[1],  # type: ignore
+                        severity_icon=severity[2],
+                        remediation=(
+                            f"1. Remove or restrict access to /{path}\n"
+                            "2. Configure web server to deny access to sensitive files\n"
+                            "3. Add rules to .htaccess or nginx config to block these paths\n"
+                            "4. Move sensitive files outside the web root"
+                        ),
+                        confidence="Medium"
+                    )
+                    vulns.append(vuln)
 
             except Exception as e:
-                logger.debug(f"Sensitive file probe failed for {path}: {e}")
+                logger.debug(f"Sensitive file probe failed for {path}: {e}", exc_info=True)
 
         return vulns
 
@@ -125,10 +126,9 @@ class SensitiveFiles(BaseCheck):
             return False
         if "git" in path and "ref:" not in text and "[core]" not in text:
             return False
-        if path.endswith(".sql") and not any(token in lower for token in ["create table", "insert into", "dump", "database"]):
-            return False
-
-        return True
+        return not path.endswith(".sql") or any(
+            token in lower for token in ["create table", "insert into", "dump", "database"]
+        )
 
     def _get_severity(self, path: str) -> tuple:
         """Return (score, level, icon) based on file sensitivity."""

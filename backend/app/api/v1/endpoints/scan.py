@@ -1,12 +1,13 @@
+
 from fastapi import APIRouter, Depends, HTTPException
-from typing import List, Dict
+
+from app.core.security import get_api_key
 from app.models.scan import ScanRequest, ScanResponse
 from app.services.scanner.manager import scan_manager
-from app.core.security import get_api_key
 
 router = APIRouter()
 
-@router.get("/", response_model=List[ScanResponse], dependencies=[Depends(get_api_key)])
+@router.get("/", response_model=list[ScanResponse], dependencies=[Depends(get_api_key)])
 async def list_scans():
     """
     List all scan sessions, sorted by start time (newest first).
@@ -36,7 +37,7 @@ async def get_scan_status(scan_id: str):
     scan.recent_logs = scan_manager.get_logs(scan_id)[-300:]
     return scan
 
-@router.get("/{scan_id}/logs", response_model=List[Dict], dependencies=[Depends(get_api_key)])
+@router.get("/{scan_id}/logs", response_model=list[dict], dependencies=[Depends(get_api_key)])
 async def get_scan_logs(scan_id: str):
     """
     Get logs for a specific scan.

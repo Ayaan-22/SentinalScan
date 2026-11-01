@@ -1,9 +1,11 @@
-from typing import List, Set
-from bs4 import BeautifulSoup
-from .base import BaseCheck
-from app.models.vulnerability import Vulnerability, VulnType, SeverityLevel
 import logging
+
 import httpx
+from bs4 import BeautifulSoup
+
+from app.models.vulnerability import SeverityLevel, Vulnerability, VulnType
+
+from .base import BaseCheck
 
 logger = logging.getLogger(__name__)
 
@@ -69,13 +71,13 @@ class SecurityHeaders(BaseCheck):
     def __init__(self, client: httpx.AsyncClient):
         super().__init__(client)
         # Scan-level dedup: track which header names have already been reported
-        self._reported_headers: Set[str] = set()
+        self._reported_headers: set[str] = set()
 
     @property
     def vuln_type(self) -> VulnType:
         return VulnType.SECURITY_HEADERS
 
-    async def check(self, url: str, content: str, forms: List[BeautifulSoup]) -> List[Vulnerability]:
+    async def check(self, url: str, content: str, forms: list[BeautifulSoup]) -> list[Vulnerability]:
         vulns = []
 
         try:
@@ -107,7 +109,7 @@ class SecurityHeaders(BaseCheck):
                     vulns.append(vuln)
 
         except Exception as e:
-            logger.debug(f"Security headers check failed for {url}: {e}")
+            logger.debug(f"Security headers check failed for {url}: {e}", exc_info=True)
 
         return vulns
 

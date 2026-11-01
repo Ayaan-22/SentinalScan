@@ -1,9 +1,11 @@
-from typing import List
-from bs4 import BeautifulSoup
-from .base import BaseCheck
-from app.models.vulnerability import Vulnerability, VulnType, SeverityLevel
-import urllib.parse
 import logging
+import urllib.parse
+
+from bs4 import BeautifulSoup
+
+from app.models.vulnerability import SeverityLevel, Vulnerability, VulnType
+
+from .base import BaseCheck
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +14,7 @@ class ReflectedXSS(BaseCheck):
     def vuln_type(self) -> VulnType:
         return VulnType.XSS
 
-    async def check(self, url: str, content: str, forms: List[BeautifulSoup]) -> List[Vulnerability]:
+    async def check(self, url: str, content: str, forms: list[BeautifulSoup]) -> list[Vulnerability]:
         vulns = []
         payloads = [
             ("<script>alert('XSS')</script>", "script tag injection"),
@@ -72,6 +74,6 @@ class ReflectedXSS(BaseCheck):
                             vulns.append(vuln)
                             break  # Found XSS in this field, move to next
                     except Exception as e:
-                        logger.debug(f"XSS test failed on {target_url}: {e}")
+                        logger.debug(f"XSS test failed on {target_url}: {e}", exc_info=True)
                         
         return vulns

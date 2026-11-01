@@ -46,7 +46,7 @@ frontend/dist/
 frontend/dist-ssr/
 frontend/build/
 .cache/
-.eslintcache/
+.eslintcache
 .npm
 .yarn-integrity
 *.tsbuildinfo
@@ -66,9 +66,15 @@ coverage.xml
 htmlcov/
 .mypy_cache/
 .ruff_cache/
+coverage/
+.nyc_output/
+test-results/
+playwright-report/
+blob-report/
 
 # ── IDE & Editors ─────────────────────
-.vscode/
+# Ignore local editor state while allowing the shared configuration below.
+.vscode/*
 !.vscode/extensions.json
 !.vscode/launch.json
 !.vscode/settings.json
@@ -95,8 +101,11 @@ desktop.ini
 *.bak
 *.tmp
 *.temp
-reports/*.json
-reports/*.html
-reports/*.pdf
+# Generated reports and audit snapshots, including nested report directories.
+# Markdown reports and reproduction scripts remain eligible for version control.
+/reports/**/*.json
+/reports/**/*.html
+/reports/**/*.pdf
+/reports/**/*.sarif
 scans/
 debug/

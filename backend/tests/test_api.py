@@ -1,10 +1,9 @@
-import os
-os.environ["SENTINAL_API_KEY"] = "ci_test_key_abcdefghijklmnop12345678"
-
+import pytest
 from fastapi.testclient import TestClient
+
 from app.main import app
 from app.services.scanner.manager import scan_manager
-import pytest
+
 
 @pytest.fixture(autouse=True)
 def cleanup_scans():
