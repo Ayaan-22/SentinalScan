@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { scanApi } from "../../services/api";
+import { buildPolicy, capturedPages } from "./policy";
 
 export function useBackendHealth() {
   return useQuery({
@@ -37,10 +38,11 @@ export function useScanLogs(scanId, isScanning) {
 export function useStartScan() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (config) => {
+    mutationFn: async (config) => {
       // Build the proper payload for the backend
       const payload = {
         target_url: config.target_url,
+        mode: config.mode || "passive",
         max_pages: config.max_pages || 50,
         workers: config.workers || 5,
         timeout: config.timeout || 15,
@@ -81,6 +83,12 @@ export function useStartScan() {
         if (paths.length > 0) payload.exclude_paths = paths;
       }
 
+      if (payload.mode === "passive") {
+        payload.captured_pages = capturedPages(config);
+      } else {
+        const policy = await scanApi.authorizePolicy(buildPolicy(config, payload.exclude_paths || []));
+        payload.policy_id = policy.policy_id;
+      }
       return scanApi.start(payload);
     },
     onSuccess: () => {

@@ -115,6 +115,7 @@ export function ScanHistory({
                 <span>
                   <strong>{hostname(s.target_url)}</strong>
                   <small>{s.scan_id}</small>
+                  <small>Policy: {s.mode || "Unrecorded (legacy / demo)"}</small>
                 </span>
               </span>
               <span className={`status-badge ${s.status}`}>

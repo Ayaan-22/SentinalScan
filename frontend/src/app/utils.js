@@ -74,6 +74,9 @@ export function serializeReport(format, scan, findings, demo) {
                 start_time: scan.start_time,
                 end_time: scan.end_time,
                 pages_scanned: scan.pages_scanned,
+                mode: scan.mode,
+                policy: scan.policy,
+                policy_description: scan.policy_description,
               }
             : null,
           findings,

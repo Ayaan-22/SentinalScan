@@ -8,7 +8,7 @@ from app.services.scanner.manager import ScanManager
 
 
 class FakeEngine:
-    def __init__(self, config, on_finding=None):
+    def __init__(self, config, on_finding=None, **kwargs):
         self.config = config
         self.on_finding = on_finding
         self.pages_scanned = 0

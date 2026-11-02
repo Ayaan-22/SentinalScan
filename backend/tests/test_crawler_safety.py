@@ -1,7 +1,11 @@
+from datetime import UTC, datetime, timedelta
+
 import httpx
 import pytest
 
+from app.models.policy import PolicyAuthorization
 from app.models.scan import ScanRequest
+from app.services.scanner.authorization import AuthorizationStore
 from app.services.scanner.crawler import WebCrawler
 
 
@@ -42,7 +46,7 @@ async def test_unresolvable_host_is_blocked():
 
 @pytest.mark.asyncio
 async def test_redirect_to_loopback_is_blocked(monkeypatch):
-    crawler = WebCrawler(ScanRequest(target_url="http://example.com"))
+    crawler = active_crawler("http://example.com")
     monkeypatch.setattr(crawler, "_is_safe_ip", lambda hostname: _safe_ip(hostname))
 
     def handler(request):
@@ -56,7 +60,7 @@ async def test_redirect_to_loopback_is_blocked(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_redirect_to_metadata_ip_is_blocked(monkeypatch):
-    crawler = WebCrawler(ScanRequest(target_url="http://example.com"))
+    crawler = active_crawler("http://example.com")
     monkeypatch.setattr(crawler, "_is_safe_ip", lambda hostname: _safe_ip(hostname))
 
     def handler(request):
@@ -70,19 +74,26 @@ async def test_redirect_to_metadata_ip_is_blocked(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_url_canonicalization_fragment_static_same_origin_and_exclude(monkeypatch):
-    crawler = WebCrawler(
-        ScanRequest(
-            target_url="https://Example.com:443/app/?b=2&a=1#frag",
-            exclude_paths=["/admin"],
-        )
-    )
+    crawler = active_crawler("https://Example.com:443/app/?b=2&a=1#frag", exclude_paths=["/admin"])
     monkeypatch.setattr(crawler, "_is_safe_ip", lambda hostname: _safe_ip(hostname))
 
-    assert crawler.base_url == "https://example.com/app?a=1&b=2"
+    assert crawler.base_url == "https://example.com/app/?b=2&a=1"
     assert await crawler._is_valid_link(crawler.base_url, "/next#part") is True
     assert await crawler._is_valid_link(crawler.base_url, "https://evil.test/") is False
     assert await crawler._is_valid_link(crawler.base_url, "/assets/app.js") is False
     assert await crawler._is_valid_link(crawler.base_url, "/admin/panel") is False
+
+
+def active_crawler(target, **kwargs):
+    from app.models.policy import origin
+
+    store = AuthorizationStore()
+    policy = store.register(PolicyAuthorization(
+        mode="safe-active", scope_origin=origin(target),
+        allowed_endpoints=[{"path": path, "methods": ["GET"]} for path in ("/", "/app/", "/next")],
+        expires_at=datetime.now(UTC) + timedelta(minutes=10), authorization_confirmed=True,
+    ), "test")
+    return WebCrawler(ScanRequest(target_url=target, mode="safe-active", policy_id=policy.policy_id, **kwargs), store=store)
 
 
 async def _safe_ip(hostname):

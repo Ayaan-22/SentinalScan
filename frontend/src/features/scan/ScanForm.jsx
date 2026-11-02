@@ -21,6 +21,11 @@ export function ScanForm({ onScanStarted, onStop, isScanning, stopPending }) {
   const [authorized, setAuthorized] = useState(false);
   const [error, setError] = useState("");
   const [options, setOptions] = useState({
+    mode: "passive",
+    captured_content: "",
+    captured_headers: "",
+    allowed_endpoints_str: "GET /",
+    policy_expires_at: "",
     max_pages: 50,
     workers: 5,
     timeout: 15,
@@ -32,8 +37,10 @@ export function ScanForm({ onScanStarted, onStop, isScanning, stopPending }) {
     cookies_str: "",
     exclude_paths_str: "",
   });
-  const update = (key, value) =>
+  const update = (key, value) => {
     setOptions((prev) => ({ ...prev, [key]: value }));
+    setAuthorized(false);
+  };
   const valid = (() => {
     try {
       const u = new URL(url.trim());
@@ -58,7 +65,7 @@ export function ScanForm({ onScanStarted, onStop, isScanning, stopPending }) {
       return;
     }
     start.mutate(
-      { target_url: url.trim(), ...options },
+      { target_url: url.trim(), ...options, authorization_confirmed: authorized },
       {
         onSuccess: onScanStarted,
         onError: (e) => setError(getFriendlyApiError(e)),
@@ -93,18 +100,51 @@ export function ScanForm({ onScanStarted, onStop, isScanning, stopPending }) {
             autoComplete="url"
             placeholder="https://your-application.com"
             value={url}
-            onChange={(e) => setUrl(e.target.value)}
+            onChange={(e) => { setUrl(e.target.value); setAuthorized(false); }}
           />
           <span>HTTP / HTTPS</span>
         </div>
         <p className={`field-help ${url && !valid ? "error-text" : ""}`}>
           {url && !valid
             ? "Enter a full HTTP or HTTPS URL without embedded credentials."
-            : "Discovery stays within this target's origin."}
+            : options.mode === "passive" ? "Captured pages must stay within this target's origin. No target requests are made." : "Discovery stays within this target's origin and the exact endpoint grants."}
         </p>
         <div className="form-section-label">
           <span>02</span> SCAN PARAMETERS
         </div>
+        <fieldset className="policy-controls">
+          <legend>Execution policy</legend>
+          {[
+            ["passive", "Passive — captured traffic only (default)"],
+            ["safe-active", "Safe-active — approved GET / HEAD endpoints"],
+            ["custom-active", "Custom-active — approved endpoint / method pairs"],
+          ].map(([mode, label]) => (
+            <label className="field-label" key={mode}>
+              <input type="radio" name="scan-mode" value={mode} checked={options.mode === mode}
+                onChange={() => update("mode", mode)} /> {label}
+            </label>
+          ))}
+          {options.mode === "passive" ? <>
+            <p className="field-help">No crawling, form submissions, XSS, SQLi or sensitive-file probes. Analyze HTML captured within the selected target origin. Missing response headers are skipped.</p>
+            <label className="field-label" htmlFor="captured-content">Captured HTML</label>
+            <textarea id="captured-content" required rows={5} value={options.captured_content}
+              onChange={(e) => update("captured_content", e.target.value)} placeholder="Paste an existing HTML response" />
+            <label className="field-label" htmlFor="captured-headers">Captured response headers (optional JSON object)</label>
+            <textarea id="captured-headers" rows={2} value={options.captured_headers}
+              onChange={(e) => update("captured_headers", e.target.value)} placeholder={'{"Content-Type":"text/html"}'} />
+          </> : <>
+            <p className="field-help">Selected mode: {options.mode}. Requests may change application state, including GET. The server records this authorization before scanning and checks it on every request.</p>
+            <p className="field-help">Scope: {valid ? new URL(url.trim()).origin : "Enter a target origin"}. Only exact paths and methods below are allowed. Include GET for the target and GET /robots.txt if crawl directives are needed.</p>
+            <label className="field-label" htmlFor="allowed-endpoints">Allowed endpoints and methods (one per line)</label>
+            <textarea id="allowed-endpoints" required rows={4} value={options.allowed_endpoints_str}
+              onChange={(e) => update("allowed_endpoints_str", e.target.value)} placeholder={"GET /\nGET /search\nPOST /search"} />
+            <label className="field-label" htmlFor="policy-expiry">Authorization expires (local time, at most 7 days)</label>
+            <input id="policy-expiry" type="datetime-local" required value={options.policy_expires_at}
+              onChange={(e) => update("policy_expires_at", e.target.value)} />
+            <p className="field-help">Logout, checkout, purchase, payments, deletion, recovery, password, account, user, settings, email and transfer workflows are blocked. Add further excluded path prefixes in Advanced configuration.</p>
+            <p className="field-help">Additional excluded prefixes: {options.exclude_paths_str || "None added"}.</p>
+          </>}
+        </fieldset>
         <div className="numeric-fields">
           {[
             ["max_pages", "Page limit", 1, 500, "pages"],
@@ -257,7 +297,7 @@ export function ScanForm({ onScanStarted, onStop, isScanning, stopPending }) {
           />
           <ShieldCheck size={19} />
           <span>
-            <strong>I am authorized to test this target.</strong>
+            <strong>{options.mode === "passive" ? "I am authorized to analyze this captured traffic." : `I explicitly authorize this ${options.mode} scope, methods and expiry.`}</strong>
             <small>
               I own this system or have explicit permission, and have chosen
               appropriate scan limits.
@@ -272,7 +312,7 @@ export function ScanForm({ onScanStarted, onStop, isScanning, stopPending }) {
       )}
       <div className="scan-submit">
         <span>
-          <ShieldCheck size={14} /> Bounded, same-origin assessment
+          <ShieldCheck size={14} /> Selected policy: {options.mode}
         </span>
         {isScanning ? (
           <button

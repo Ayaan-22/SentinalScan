@@ -52,6 +52,10 @@ api.interceptors.request.use((config) => {
 });
 
 export const scanApi = {
+  authorizePolicy: async (policy) => {
+    const { data } = await api.post("/scan/policies", policy);
+    return data;
+  },
   health: async () => {
     const { data } = await axios.get(`${getApiRoot()}/health`, { timeout: 2500 });
     return data;

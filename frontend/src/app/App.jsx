@@ -27,6 +27,7 @@ import {
   X,
 } from "lucide-react";
 import { ScanForm } from "../features/scan/ScanForm";
+import { PolicySummary } from "../features/scan/PolicySummary";
 import { Select } from "../components/Select";
 import {
   useAllScans,
@@ -799,6 +800,7 @@ export default function App() {
                       </p>
                     </div>
                   </div>
+                  <PolicySummary scan={scan} />
                   <dl className="scan-details">
                     <div>
                       <dt>Scan identifier</dt>

@@ -9,7 +9,7 @@ Automated web vulnerability scanner for authorized security testing.
 
 ## Authorized Use Only
 
-SentinalScan is intended only for systems you own or have explicit permission to test. It includes SSRF protections, bounded defaults, authentication, and non-destructive payloads, but operators are still responsible for scope, rate limits, and authorization.
+SentinalScan is intended only for systems you own or have explicit permission to test. Passive mode analyzes supplied captures without target requests. Active requests, including GET, may change application state and require a stored authorization policy. Operators remain responsible for endpoint behavior, scope and rate limits.
 
 ## Features
 
@@ -159,3 +159,11 @@ If the WebSocket cannot stay connected during an active scan, the UI falls back 
 - [Full Codex Audit](reports/audits/codex-full-audit.md)
 - [Architecture Analysis](reports/audits/sentinalscan-architecture-analysis.md)
 - [Implementation Guide](reports/audits/sentinalscan-implementation-guide.md)
+
+## Scan safety policy (SS-02)
+
+The scan API defaults to **passive capture analysis** and makes no target requests.
+Supply captured HTML in the UI or `captured_pages` in the API. Active scans require
+an explicit, server-recorded, expiring policy with exact endpoint/method grants.
+See the [scan policy API and safety contract](reports/audits/ss-02-scan-policies.md)
+before enabling either active mode. GET requests can also change application state.

@@ -1,9 +1,9 @@
 import logging
 
-import httpx
 from bs4 import BeautifulSoup
 
 from app.models.vulnerability import SeverityLevel, Vulnerability, VulnType
+from app.services.scanner.transport import ScanHttpClient
 
 from .base import BaseCheck
 
@@ -68,7 +68,7 @@ class SecurityHeaders(BaseCheck):
     Deduplication: reports each missing header once per scan.
     """
 
-    def __init__(self, client: httpx.AsyncClient):
+    def __init__(self, client: ScanHttpClient):
         super().__init__(client)
         # Scan-level dedup: track which header names have already been reported
         self._reported_headers: set[str] = set()

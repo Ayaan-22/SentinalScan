@@ -6,7 +6,9 @@ import threading
 import uuid
 from datetime import UTC, datetime
 
+from app.models.policy import ScanMode
 from app.models.scan import ScanRequest, ScanResponse, ScanStatus
+from app.services.scanner.authorization import AuthorizationStore
 from app.services.scanner.engine import ScannerEngine
 
 logger = logging.getLogger(__name__)
@@ -44,7 +46,8 @@ class ScanLogHandler(logging.Handler):
 class ScanManager:
     """Manages scan sessions using native asyncio orchestration."""
     
-    def __init__(self):
+    def __init__(self, store: AuthorizationStore | None = None):
+        self.authorization_store = store or AuthorizationStore()
         self.scans: dict[str, ScanResponse] = {}
         self.engines: dict[str, ScannerEngine] = {}
         self.tasks: dict[str, asyncio.Task] = {}
@@ -52,8 +55,15 @@ class ScanManager:
         self._scan_lock = asyncio.Lock()
         self._results_lock = asyncio.Lock()
 
-    async def create_scan(self, request: ScanRequest) -> ScanResponse:
+    async def create_scan(self, request: ScanRequest, principal: str | None = None) -> ScanResponse:
         """Create a new scan session and launch it as an async background task."""
+        policy = None
+        if request.mode != ScanMode.PASSIVE:
+            if principal is None:
+                raise PermissionError("An authenticated authorizing principal is required")
+            policy = self.authorization_store.require(
+                request.policy_id, request.mode, "GET", request.target_url, principal,
+            )
         async with self._scan_lock:
             # Rate-limit: max 1 concurrent scan (P0 Lock enforcement)
             active_scans = [
@@ -68,7 +78,15 @@ class ScanManager:
                 scan_id=scan_id,
                 status=ScanStatus.PENDING,
                 target_url=request.target_url,
-                start_time=datetime.now(UTC)
+                start_time=datetime.now(UTC),
+                mode=request.mode,
+                policy=policy,
+                policy_description=(
+                    "Active requests may change application state; exact stored scope and method permissions apply."
+                    if policy else
+                    f"Passive: {len(request.captured_pages)} supplied captures; no target requests or form submissions. "
+                    "XSS, SQLi and sensitive-file probing are disabled."
+                ),
             )
             self.scans[scan_id] = scan_response
             self.logs[scan_id] = []
@@ -127,7 +145,10 @@ class ScanManager:
         })
         
         try:
-            engine = ScannerEngine(request, on_finding=lambda finding: self._append_finding(scan_id, finding))
+            engine = ScannerEngine(
+                request, on_finding=lambda finding: self._append_finding(scan_id, finding),
+                store=self.authorization_store, scan_id=scan_id,
+            )
             self.engines[scan_id] = engine
             
             # PHASE 2: Native async engine run (P0 Migration)

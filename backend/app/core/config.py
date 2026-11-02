@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -40,6 +42,7 @@ class Settings(BaseSettings):
     DEFAULT_WORKERS: int = 5
     DEFAULT_TIMEOUT: int = 15
     USER_AGENT: str = f"SentinalScan/{APP_VERSION}"
+    SCAN_POLICY_DB: str = str(Path(__file__).resolve().parents[2] / "data" / "scan-policy.sqlite3")
     
     model_config = SettingsConfigDict(
         env_file=".env",

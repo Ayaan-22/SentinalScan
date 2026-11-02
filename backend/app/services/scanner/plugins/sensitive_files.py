@@ -5,6 +5,7 @@ import httpx
 from bs4 import BeautifulSoup
 
 from app.models.vulnerability import SeverityLevel, Vulnerability, VulnType
+from app.services.scanner.transport import ScanHttpClient
 
 from .base import BaseCheck
 
@@ -40,7 +41,7 @@ _NON_JSON_PATHS = {p for p, _ in SENSITIVE_PATHS if p not in ("config.json",)}
 class SensitiveFiles(BaseCheck):
     """Check for exposed sensitive files and directories (Async)."""
 
-    def __init__(self, client: httpx.AsyncClient):
+    def __init__(self, client: ScanHttpClient):
         super().__init__(client)
         self._probed_origins: set[str] = set()
         self._reported_paths: set[tuple[str, str]] = set()

@@ -6,6 +6,7 @@ from bs4 import BeautifulSoup
 from app.models.vulnerability import SeverityLevel, Vulnerability, VulnType
 
 from .base import BaseCheck
+from .forms import probe_forms, submit_probe
 
 logger = logging.getLogger(__name__)
 
@@ -30,32 +31,11 @@ class ReflectedXSS(BaseCheck):
             method = form.get("method", "get").lower()
             target_url = urllib.parse.urljoin(url, action)
             
-            inputs = form.find_all("input")
-            textareas = form.find_all("textarea")
-            all_fields = inputs + textareas
-            
-            for field in all_fields:
-                name = field.get("name")
-                if not name or field.get("type") in ["submit", "image", "hidden", "button"]:
-                    continue
-                
+            for name, index, baseline in probe_forms(form):
                 for payload, desc in payloads:
-                    data = {}
-                    for i in all_fields:
-                        field_name = i.get("name")
-                        if not field_name:
-                            continue
-                        if field_name == name:
-                            data[field_name] = payload
-                        else:
-                            data[field_name] = "test"
-                            
                     try:
-                        if method == "post":
-                            resp = await self.client.post(target_url, data=data, timeout=5)
-                        else:
-                            resp = await self.client.get(target_url, params=data, timeout=5)
-                            
+                        resp = await submit_probe(self.client, method, target_url, baseline, index, payload)
+
                         if payload in resp.text:
                             vuln = self._create_vuln(
                                 url=target_url,

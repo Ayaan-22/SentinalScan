@@ -2,17 +2,17 @@ import logging
 import time
 from abc import ABC, abstractmethod
 
-import httpx
 from bs4 import BeautifulSoup
 
 from app.models.vulnerability import Vulnerability, VulnType
+from app.services.scanner.transport import ScanHttpClient
 
 logger = logging.getLogger(__name__)
 
 class BaseCheck(ABC):
     """Base class for all vulnerability check plugins (Asynchronous)"""
     
-    def __init__(self, client: httpx.AsyncClient):
+    def __init__(self, client: ScanHttpClient):
         self.client = client
 
     @property

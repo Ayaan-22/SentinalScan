@@ -5,6 +5,7 @@ from collections.abc import Awaitable, Callable
 
 from bs4 import BeautifulSoup
 
+from app.models.policy import ScanMode
 from app.models.scan import ScanRequest
 from app.models.vulnerability import Vulnerability
 from app.services.scanner.crawler import WebCrawler
@@ -14,6 +15,7 @@ from app.services.scanner.plugins.headers import SecurityHeaders
 from app.services.scanner.plugins.sensitive_files import SensitiveFiles
 from app.services.scanner.plugins.sqli import SQLInjection
 from app.services.scanner.plugins.xss import ReflectedXSS
+from app.services.scanner.transport import ActiveRequests, CapturedResponses
 
 logger = logging.getLogger(__name__)
 
@@ -24,9 +26,10 @@ class ScannerEngine:
         self,
         config: ScanRequest,
         on_finding: Callable[[Vulnerability], Awaitable[None]] | None = None,
+        *, store=None, scan_id: str = "standalone",
     ):
         self.config = config
-        self.crawler = WebCrawler(config)
+        self.crawler = WebCrawler(config, store=store, scan_id=scan_id)
         self.vulnerabilities: list[Vulnerability] = []
         self._stop_event = False
         self._pages_scanned = 0
@@ -34,8 +37,12 @@ class ScannerEngine:
         self.on_finding = on_finding
 
     async def _init_plugins(self):
-        """Initialize plugins with the crawler's async client."""
-        client = await self.crawler._get_client()
+        """Passive plugins can only inspect captures; active plugins use guarded sends."""
+        if self.config.mode == ScanMode.PASSIVE:
+            client = CapturedResponses(self.config.captured_pages)
+            self.plugins = [SecurityHeaders(client), CSRFCheck(client)]
+            return
+        client = ActiveRequests(self.crawler)
         self.plugins = [
             ReflectedXSS(client),
             SQLInjection(client),
@@ -104,6 +111,7 @@ class ScannerEngine:
         logger.info("VULNERABILITY SCAN STARTED (ASYNC ENGINE)")
         logger.info("Authorized testing only - scanning must be limited to approved targets")
         logger.info(f"Target: {self.config.target_url}")
+        logger.info("Policy mode: %s | authorization: %s", self.config.mode.value, self.config.policy_id or "capture only")
         logger.info(f"Max Pages: {self.config.max_pages} | Workers: {self.config.workers}")
         logger.info('=' * 60)
         
@@ -133,7 +141,7 @@ class ScannerEngine:
                     logger.info(f"[{index+1}/{len(pages)}] Scanning: {page}")
                     try:
                         content = self.crawler.response_cache.get(page)
-                        if not content:
+                        if content is None:
                             resp = await self.crawler.safe_get(page, timeout=self.config.timeout)
                             content = resp.text
                         

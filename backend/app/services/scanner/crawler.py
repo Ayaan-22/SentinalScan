@@ -3,13 +3,15 @@ import ipaddress
 import logging
 import socket
 from urllib import robotparser
-from urllib.parse import parse_qsl, urlencode, urljoin, urlparse, urlunparse
+from urllib.parse import urljoin, urlparse
 
 import httpx
 from bs4 import BeautifulSoup
 
 from app.core.config import settings
+from app.models.policy import ScanMode, canonical_url, origin
 from app.models.scan import ScanRequest
+from app.services.scanner.authorization import AuthorizationStore
 
 logger = logging.getLogger(__name__)
 
@@ -38,8 +40,11 @@ _ALWAYS_BLOCKED_NETS = [ipaddress.ip_network(c) for c in ALWAYS_BLOCKED_CIDRS]
 class WebCrawler:
     """Secure Async Web Crawler with SSRF protection and robots.txt compliance."""
 
-    def __init__(self, config: ScanRequest):
+    def __init__(self, config: ScanRequest, *, store: AuthorizationStore | None = None,
+                 scan_id: str = "standalone"):
         self.config = config
+        self.store = store or AuthorizationStore()
+        self.scan_id = scan_id
         self.base_url = self._normalize_url(config.target_url)
         self.base_domain = urlparse(self.base_url).netloc
         self.base_origin = f"{urlparse(self.base_url).scheme}://{self.base_domain}"
@@ -69,6 +74,7 @@ class WebCrawler:
                 verify=self.config.verify_ssl,
                 timeout=self.config.timeout,
                 follow_redirects=False,
+                trust_env=False,
             )
 
             if self.config.auth_token:
@@ -80,19 +86,7 @@ class WebCrawler:
         self._stopped = True
 
     def _normalize_url(self, url: str) -> str:
-        parsed = urlparse(url.strip())
-        scheme = parsed.scheme.lower()
-        hostname = (parsed.hostname or "").lower()
-        netloc = hostname
-        if parsed.port and not (
-            (scheme == "http" and parsed.port == 80)
-            or (scheme == "https" and parsed.port == 443)
-        ):
-            netloc = f"{hostname}:{parsed.port}"
-        path = parsed.path or "/"
-        path = path.rstrip("/") or "/"
-        query = urlencode(sorted(parse_qsl(parsed.query, keep_blank_values=True)))
-        return urlunparse((scheme, netloc, path, "", query, ""))
+        return canonical_url(url)
 
     async def _is_safe_ip(self, hostname: str) -> bool:
         """Prevent SSRF by blocking private/loopback/metadata IPs.
@@ -139,8 +133,10 @@ class WebCrawler:
                 return False
 
             # Scope check — stay on the same domain
-            if parsed.netloc.lower() != self.base_domain:
+            if origin(full_url) != self.base_origin:
                 return False
+
+            self.store.require(self.config.policy_id, self.config.mode, "GET", full_url)
 
             # SSRF check on the resolved IP
             if not await self._is_safe_ip(parsed.hostname or ""):
@@ -189,7 +185,7 @@ class WebCrawler:
         parsed = urlparse(normalized)
         if parsed.scheme not in ("http", "https"):
             raise ValueError("Unsupported URL scheme")
-        if parsed.netloc.lower() != self.base_domain:
+        if origin(normalized) != self.base_origin:
             raise ValueError("Blocked cross-origin request")
         if not parsed.hostname or not await self._is_safe_ip(parsed.hostname):
             raise ValueError(f"Blocked unsafe request host: {parsed.hostname}")
@@ -201,12 +197,11 @@ class WebCrawler:
 
     async def safe_get(self, url: str, **kwargs) -> httpx.Response:
         """GET with per-request SSRF and manual redirect validation."""
-        client = await self._get_client()
-        current_url = await self._validate_request_url(url)
+        current_url = self._normalize_url(url)
         for _ in range(5):
             if self._stopped:
                 raise asyncio.CancelledError("Crawler stopped")
-            resp = await client.get(current_url, follow_redirects=False, **kwargs)
+            resp = await self.request("GET", current_url, **kwargs)
             if resp.status_code not in (301, 302, 303, 307, 308):
                 return resp
 
@@ -214,19 +209,68 @@ class WebCrawler:
             if not location:
                 return resp
             next_url = self._normalize_url(urljoin(current_url, location))
-            next_parsed = urlparse(next_url)
-            if next_parsed.netloc.lower() != self.base_domain:
+            if origin(next_url) != self.base_origin:
                 raise ValueError(f"Blocked redirect outside scan origin: {next_url}")
-            current_url = await self._validate_request_url(next_url)
+            current_url = next_url
 
         raise ValueError("Too many redirects")
+
+    async def request(self, method: str, url: str, **kwargs) -> httpx.Response:
+        """Only outbound send route. A policy denial happens before client/DNS access."""
+        if self._stopped:
+            raise asyncio.CancelledError("Crawler stopped")
+        # HTTPX redirect/auth flows can perform additional sends without returning
+        # to this validator. Only safe_get may follow redirects, one checked hop
+        # at a time; plugins may retain their existing follow_redirects=False.
+        if kwargs.pop("follow_redirects", False) is not False:
+            raise PermissionError("Automatic redirects are forbidden")
+        if "auth" in kwargs:
+            raise PermissionError("Per-request authentication flows are forbidden")
+        method = method.upper()
+        # Apply query parameters before checking sensitive operations and recording scope.
+        params = kwargs.pop("params", None)
+        request_url = canonical_url(url)
+        if params is not None:
+            query = str(httpx.QueryParams(params))
+            request_url += ("&" if "?" in request_url else "?") + query
+        prepared = httpx.Request(method, request_url)
+        final_url = str(prepared.url)
+        self.store.require(self.config.policy_id, self.config.mode, method, final_url)
+        for headers in (self.config.headers or {}, kwargs.get("headers") or {}):
+            if any(name.lower() in {"host", "x-http-method-override", "x-method-override", "x-http-method"} for name in headers):
+                raise PermissionError("Host and HTTP method overrides are forbidden")
+        final_url = await self._validate_request_url(final_url)
+        client = await self._get_client()
+        # Recheck expiry immediately before send, including time spent resolving DNS.
+        policy = self.store.require(self.config.policy_id, self.config.mode, method, final_url)
+        if self._stopped:
+            raise asyncio.CancelledError("Crawler stopped")
+        request_id = self.store.record_request(self.scan_id, policy, method, final_url)
+        try:
+            policy.require_request(self.config.mode, method, final_url)
+        except PermissionError:
+            self.store.finish_request(request_id, "blocked")
+            raise
+        try:
+            response = await client.request(method, final_url, follow_redirects=False, **kwargs)
+        except BaseException:
+            self.store.finish_request(request_id, "uncertain")
+            raise
+        self.store.finish_request(request_id, "responded", response.status_code)
+        return response
+
+    async def get(self, url: str, **kwargs) -> httpx.Response:
+        return await self.request("GET", url, **kwargs)
+
+    async def post(self, url: str, **kwargs) -> httpx.Response:
+        return await self.request("POST", url, **kwargs)
 
     async def _load_robots_txt(self) -> None:
         """Fetch and parse robots.txt for the target domain."""
         if not self.config.obey_robots:
             return
 
-        robots_url = f"{self.base_url}/robots.txt"
+        robots_url = f"{self.base_origin}/robots.txt"
         try:
             resp = await self.safe_get(robots_url, timeout=5)
             if resp.status_code == 200:
@@ -242,6 +286,11 @@ class WebCrawler:
 
     async def crawl(self) -> list[str]:
         """Crawl the target using an async queue-based approach."""
+        if self.config.mode == ScanMode.PASSIVE:
+            for page in self.config.captured_pages[:self.config.max_pages]:
+                self.response_cache[page.url] = page.content
+            return list(self.response_cache)
+        self.store.require(self.config.policy_id, self.config.mode, "GET", self.base_url)
         await self.validate_target()
         await self._load_robots_txt()
 
@@ -321,11 +370,6 @@ class WebCrawler:
                 href = a['href']
                 if await self._is_valid_link(url, href):
                     links.add(self._normalize_url(urljoin(url, href)))
-
-            for form in soup.find_all('form', action=True):
-                action = form.get('action', '')
-                if action and await self._is_valid_link(url, action):
-                    links.add(self._normalize_url(urljoin(url, action)))
 
             return links
         except httpx.HTTPStatusError as e:

@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup
 from app.models.vulnerability import SeverityLevel, Vulnerability, VulnType
 
 from .base import BaseCheck
+from .forms import probe_forms, submit_probe
 
 logger = logging.getLogger(__name__)
 
@@ -37,8 +38,7 @@ class SQLInjection(BaseCheck):
     async def check(self, url: str, content: str, forms: list[BeautifulSoup]) -> list[Vulnerability]:
         vulns = []
         
-        # Safe error/boolean payloads. These are read-only probes and must never
-        # modify server-side data.
+        # Payloads require active authorization: submitting any form may change state.
         error_payloads = [
             ("'", "Single quote injection"),
             ('"', "Double quote injection"),
@@ -52,29 +52,11 @@ class SQLInjection(BaseCheck):
             method = form.get("method", "get").lower()
             target_url = urllib.parse.urljoin(url, action)
             
-            inputs = form.find_all("input")
-            for inp in inputs:
-                name = inp.get("name")
-                if not name or inp.get("type") in ["submit", "image", "button"]:
-                    continue
-                
+            for name, index, baseline in probe_forms(form):
                 for payload, desc in error_payloads:
-                    data = {}
-                    for i in inputs:
-                        field_name = i.get("name")
-                        if not field_name:
-                            continue
-                        if field_name == name:
-                            data[field_name] = payload
-                        else:
-                            data[field_name] = "1"
-                            
                     try:
-                        if method == "post":
-                            resp = await self.client.post(target_url, data=data, timeout=5)
-                        else:
-                            resp = await self.client.get(target_url, params=data, timeout=5)
-                            
+                        resp = await submit_probe(self.client, method, target_url, baseline, index, payload)
+
                         db_type = self._has_sql_error(resp.text)
                         if db_type:
                             vuln = self._create_vuln(
